@@ -2,6 +2,7 @@
 #define _COMMUNICATION_HPP_
 
 #include <string>
+#include <cstring>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
@@ -52,10 +53,8 @@ class CommandSocket: public ClientSocket
 
   public:
     CommandSocket();
-    bool sendCommand(const char*);
+    bool sendCommand(const char*) const;
     char* getResponse();
-
-
 };
 
 class MeasureSocket: public ServerSocket
@@ -72,8 +71,9 @@ class MeasureSocket: public ServerSocket
 class VideoSocket: public ServerSocket
 {
   private:
+    static const int PACKET_SIZE = 1460;
     static const size_t bufferSize = 2048;
-    static const size_t frameSize = 32768;
+    static const size_t frameSize = 32767;
     unsigned char videoBuffer[bufferSize];
     unsigned char currentFrame[frameSize]; // C++14 conformal solution, alternatively using std::byte in C++17
     int bytesAdded;
@@ -84,8 +84,8 @@ class VideoSocket: public ServerSocket
 
   public:
     VideoSocket();
-    unsigned char* getVideoFrame();
-    int getFrameSize();
+    unsigned char* getRawFrame();
+    int getRawFrameSize() const;
 };
 
 #endif

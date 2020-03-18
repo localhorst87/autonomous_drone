@@ -4,6 +4,8 @@
 #include <ctime>
 #include <string>
 #include <vector>
+#include <deque>
+#include <stdexcept>
 #include "FifoBuffer.hpp"
 #include "DronePhysics.hpp"
 

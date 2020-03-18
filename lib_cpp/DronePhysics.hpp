@@ -2,6 +2,7 @@
 #define _DRONEPHYSICS_HPP_
 
 #include <string>
+#include <cmath>
 #include <iostream>
 
 using namespace std;

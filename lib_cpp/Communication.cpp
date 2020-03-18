@@ -1,10 +1,4 @@
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <cstring>
 #include "Communication.hpp"
-
-#include <iostream>
-#include <cerrno>
 
 using namespace std;
 
@@ -91,7 +85,7 @@ CommandSocket::CommandSocket()
   this->port = 8889;
 }
 
-bool CommandSocket::sendCommand(const char* command)
+bool CommandSocket::sendCommand(const char* command) const
 // sends a command to the Tello drone
 // returns true/false upon successful/unsuccesfull completion
 {
@@ -128,8 +122,9 @@ VideoSocket::VideoSocket()
   this->port = 11111;
 }
 
-unsigned char* VideoSocket::getVideoFrame()
+unsigned char* VideoSocket::getRawFrame()
 // reads raw video stream packets until the frame is complete. Then returns the address of the frame
+// the raw frame is a sequence of binary data. To make use of this data, we must use H264 codec.
 {
   bool isFrameComplete = false;
   int nBytesReceived;
@@ -146,7 +141,7 @@ unsigned char* VideoSocket::getVideoFrame()
   return this->currentFrame;
 }
 
-int VideoSocket::getFrameSize()
+int VideoSocket::getRawFrameSize() const
 // returns the size of the currentFrame
 {
   return this->bytesAdded;
@@ -183,5 +178,5 @@ void VideoSocket::addPacketData(const int& nBytes)
 bool VideoSocket::isEndOfFrame(const int& nBytesReceived)
 // checks if the end of the frame is reached, according to the number of bytes sent in the last datagram packet
 {
-  return nBytesReceived < 1460;
+  return nBytesReceived < PACKET_SIZE;
 }
