@@ -1,7 +1,7 @@
 # autonomous_drone
 Using a DJI Ryze Tello drone to perform autonomous flight actions. I'm using Python for testing but the productional code is C++
 
-All code is written by me, unless otherwise indicated. I try to write clean code regarding my coding coding style and architecture if possible.
+All code is written by me, unless otherwise indicated. I try to write clean code regarding my coding style and architecture if possible.
 
 Steps:
 
