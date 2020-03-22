@@ -95,8 +95,8 @@ bool CommandSocket::sendCommand(const char* command) const
 char* CommandSocket::getResponse()
 // reads and returns the response to the last sent command
 {
-  memset(this->responseBuffer, 0, this->bufferSize);
-  recv(this->socketFileDesc, this->responseBuffer, this->bufferSize, 0);
+  memset(this->responseBuffer, 0, this->BUFFER_SIZE);
+  recv(this->socketFileDesc, this->responseBuffer, this->BUFFER_SIZE, 0);
 
   return this->responseBuffer;
 }
@@ -110,8 +110,8 @@ MeasureSocket::MeasureSocket()
 char* MeasureSocket::getMeasures()
 // reads and returns the drone measurements (in the ego frame)
 {
-  memset(this->measurementBuffer, 0, this->bufferSize);
-  recv(this->socketFileDesc, this->measurementBuffer, this->bufferSize, 0);
+  memset(this->measurementBuffer, 0, this->BUFFER_SIZE);
+  recv(this->socketFileDesc, this->measurementBuffer, this->BUFFER_SIZE, 0);
 
   return this->measurementBuffer;
 }
@@ -122,57 +122,15 @@ VideoSocket::VideoSocket()
   this->port = 11111;
 }
 
-unsigned char* VideoSocket::getRawFrame()
-// reads raw video stream packets until the frame is complete. Then returns the address of the frame
-// the raw frame is a sequence of binary data. To make use of this data, we must use H264 codec.
+int VideoSocket::getRawVideoData(unsigned char* buffer)
+// receives encoded video data and stores it in the given buffer
+// make sure buffer has allocated BUFFER_SIZE = 2048 Bytes!
 {
-  bool isFrameComplete = false;
-  int nBytesReceived;
-
-  this->resetCurrentFrame();
-
-  while (!isFrameComplete)
-  {
-    nBytesReceived = this->readPacketData();
-    if (nBytesReceived > 0) { this->addPacketData(nBytesReceived); }
-    isFrameComplete = this->isEndOfFrame(nBytesReceived);
-  }
-
-  return this->currentFrame;
-}
-
-int VideoSocket::getRawFrameSize() const
-// returns the size of the currentFrame
-{
-  return this->bytesAdded;
-}
-
-void VideoSocket::resetCurrentFrame()
-// clears the current frame's content to add packets of a new frame
-{
-  this->bytesAdded = 0;
-  memset(this->currentFrame, 0, this->frameSize);
-}
-
-int VideoSocket::readPacketData()
-// method to read a datagram packet of the video stream (packet size is 1460)
-{
-  int nBytes = 0;
-
-  memset(this->videoBuffer, 0, this->bufferSize);
-  nBytes = recv(this->socketFileDesc, this->videoBuffer, this->bufferSize, 0);
-
-  return nBytes;
-}
-
-void VideoSocket::addPacketData(const int& nBytes)
-// concatenates the last received binary data to the current video frame binary data
-{
-  memcpy(this->currentFrame + this->bytesAdded, this->videoBuffer, nBytes);
-  this->bytesAdded += nBytes;
-
+  int nBytes = recv(this->socketFileDesc, buffer, this->BUFFER_SIZE, 0);
   if ( this->isEndOfFrame(nBytes) )
-  { this->currentFrame[this->bytesAdded] = '\0'; } // add termination if frame is complete
+    buffer[nBytes] = '\0';
+
+  return nBytes + 1;
 }
 
 bool VideoSocket::isEndOfFrame(const int& nBytesReceived)
