@@ -1,9 +1,4 @@
-#include <ctime>
-#include <string>
-#include <deque>
-#include <stdexcept>
 #include "Logging.hpp"
-#include "DronePhysics.hpp"
 
 using namespace std;
 
@@ -24,9 +19,9 @@ string Job::getMainCommand() const
 	int firstSpacePos { this->command.find(" ") };
 
 	if (firstSpacePos == -1) // no spaces means no arguments
-	{ return this->command; }
+		return this->command;
 	else
-	{ return this->command.substr(0, firstSpacePos); } // cuts the string after the first space
+		return this->command.substr(0, firstSpacePos); // cuts the string after the first space
 }
 
 char* Job::getJobtime() const
@@ -42,7 +37,11 @@ bool Job::isValidCommand() const
 
 	for (const string& validCommand : VALID_COMMANDS)
 	{
-		if (mainCommand == validCommand) { isValid = true; break; }
+		if (mainCommand == validCommand)
+			{
+				isValid = true;
+				break;
+			}
 	}
 
 	return isValid;
@@ -77,13 +76,14 @@ bool Log::addJobToDo(const string& command)
     return true;
   }
   else
-  { return false; }
+  	return false;
 }
 
 Job& Log::getNextJob()
 // returns the oldest Job to be done (FIFO principle). Throws an out_of_range exception if no jobs are available
 {
-  if ( this->jobsToDo.isEmpty() ) { throw out_of_range("No Job available"); }
+  if ( this->jobsToDo.isEmpty() )
+		throw out_of_range("No Job available");
 
   return this->jobsToDo.pop(); // a reference to the oldest job of the deque (FIFO principle)
 }
@@ -92,14 +92,12 @@ bool Log::logProcessedJob(Job &job)
 // puts the given Job back to the Log (to the according deque, for documentation reasons). Returns true if the Job has been and false if Job hasn't been processed, yet.
 {
   if ( !job.isDone() ) // not done. Do not add to Log!
-  { return false; }
-
+  	return false;
   else if ( job.finishedSuccessful() )
   {
     this->jobsDone.push(job); // done successfully. Add to jobsDone.
     return true;
   }
-
   else
   {
     this->jobsError.push(job); // error occurred. Add to jobsError.

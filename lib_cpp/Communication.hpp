@@ -1,7 +1,18 @@
+/*
+provides a communication API to send and receive data with the Tello drone
+CommandSocket will be used to send commands to the drone
+MeasureSocket will be used to receive measurements from the drone
+VideoSocket is used to receive H264 encoded data
+
+To activate a socket use the following order of commands:
+configureAddress --> configureSocket --> connectSocket
+*/
+
 #ifndef _COMMUNICATION_HPP_
 #define _COMMUNICATION_HPP_
 
 #include <string>
+#include <cstring>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
@@ -15,6 +26,8 @@ class TelloSockets
     int socketFileDesc;
     sockaddr_in address;
     socklen_t addressLength;
+
+  protected:
     sockaddr* getAddress();
 
   public:
@@ -47,22 +60,20 @@ class ServerSocket: public TelloSockets
 class CommandSocket: public ClientSocket
 {
   private:
-    static const size_t bufferSize = 32;
-    char responseBuffer[bufferSize];
+    static const size_t BUFFER_SIZE = 32;
+    char responseBuffer[BUFFER_SIZE];
 
   public:
     CommandSocket();
-    bool sendCommand(const char*);
+    bool sendCommand(const char*) const;
     char* getResponse();
-
-
 };
 
 class MeasureSocket: public ServerSocket
 {
   private:
-    static const size_t bufferSize = 256;
-    char measurementBuffer[bufferSize];
+    static const size_t BUFFER_SIZE = 256;
+    char measurementBuffer[BUFFER_SIZE];
 
   public:
     MeasureSocket();
@@ -72,20 +83,15 @@ class MeasureSocket: public ServerSocket
 class VideoSocket: public ServerSocket
 {
   private:
-    static const size_t bufferSize = 2048;
-    static const size_t frameSize = 32768;
-    unsigned char videoBuffer[bufferSize];
-    unsigned char currentFrame[frameSize]; // C++14 conformal solution, alternatively using std::byte in C++17
-    int bytesAdded;
-    void resetCurrentFrame();
-    int readPacketData();
-    void addPacketData(const int&);
+    static const int PACKET_SIZE = 1460;
+    static const size_t BUFFER_SIZE = 2048;
+
+  private:
     bool isEndOfFrame(const int&);
 
   public:
     VideoSocket();
-    unsigned char* getVideoFrame();
-    int getFrameSize();
+    int getRawVideoData(unsigned char*);
 };
 
 #endif

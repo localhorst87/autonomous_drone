@@ -1,3 +1,8 @@
+/*
+FifoBuffer is a container adapter class used in the Logging class
+No need for further desciption. It uses the FIFO-principle...
+*/
+
 #ifndef _FIFOBUFFER_HPP_
 #define _FIFOBUFFER_HPP_
 
@@ -33,9 +38,9 @@ template<class T>
 FifoBuffer<T>::FifoBuffer(int maxSize)
 {
   if (maxSize >= 0)
-  { this->maxSize = maxSize; }
+    this->maxSize = maxSize;
   else
-  { this->maxSize = -1; }
+    this->maxSize = -1;
 }
 
 template<class T>
@@ -65,7 +70,7 @@ bool FifoBuffer<T>::push(T& newElement)
     return true;
   }
   else
-  { return false; }
+    return false;
 }
 
 template<class T>
@@ -77,13 +82,13 @@ bool FifoBuffer<T>::push(T&& newElement)
     return true;
   }
   else
-  { return false; }
+    return false;
 }
 
 template<class T>
 T& FifoBuffer<T>::pop()
 {
-  if (this->size() == 0) { throw out_of_range("No elements available"); }
+  if (this->size() == 0) throw out_of_range("No elements available");
 
   T& outElement = this->elements.front();
   this->elements.pop_front();

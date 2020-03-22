@@ -1,6 +1,3 @@
-#include <string>
-#include <cmath>
-#include <iostream>
 #include "DronePhysics.hpp"
 
 using namespace std;
