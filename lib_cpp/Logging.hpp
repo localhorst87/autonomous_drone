@@ -1,3 +1,9 @@
+/*
+contains classes for logging jobs performed or to be performed by the drone
+The Job class is a wrapper for drone commands
+The Log class is a buffer for jobs and measurements of the drone
+*/
+
 #ifndef _LOGGING_HPP_
 #define _LOGGING_HPP_
 
@@ -19,6 +25,8 @@ class Job
     bool sent;
     string response;
     string errorType;
+
+  private:
 		string getMainCommand() const;
 
   public:

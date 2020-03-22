@@ -50,6 +50,8 @@ class MeasurePoint
     dronePose pose;
     droneState state;
     droneAltitude altitude;
+
+  private:
     point3d localToGlobalPoint(const point3d&) const;
     point3d globalToLocalPoint(const point3d&) const;
     point3d getRawAcceleration() const;
