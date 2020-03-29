@@ -28,7 +28,7 @@ void RgbImage::checkFrameFormat(AVFrame* frame)
 }
 
 three_dim_byte_vector RgbImage::getRgbPixels()
-// returns a three-dimensional vector of size width x height x 3. So for each pixel in the picture
+// returns a three-dimensional vector of size width x height x 3. So each pixel in the picture
 // contains an uint8_t - vector with {red, green, blue} data inside.
 {
   three_dim_byte_vector rgbPixels(this->width, vector<byte_vector>( this->height, byte_vector(3) ) );
@@ -138,6 +138,8 @@ bool Decoder::openCodec()
 
 bool Decoder::parseEncodedData(uint8_t* encodedData, int size)
 // parses the data and returns true if parsing has finished or false if additional encoded data is required.
+// Important: For useful output a key frame must be sent by the drone's camera. This can take up to
+// a few seconds after starting to receive video stream data!
 {
   int bufferSize = 0; // will be set to size of parsed buffer or 0 if more data is required
   av_parser_parse2(this->parserContext, this->codecContext, &this->parserBuffer, &bufferSize, encodedData, size, 0, 0, AV_NOPTS_VALUE);
@@ -164,10 +166,17 @@ bool Decoder::decodeParsedData()
     return false;
   }
 
-  int gotPicture = 0;
-  avcodec_decode_video2(this->codecContext, this->frame, &gotPicture, &this->avPacket);
+  bool gotPicture = false;
 
-  return gotPicture != 0;
+  if (avcodec_send_packet(this->codecContext, &this->avPacket) >= 0)
+  {
+    if (avcodec_receive_frame(this->codecContext, this->frame) >= 0)
+      gotPicture = true;
+    else
+      gotPicture = false;
+  }
+
+  return gotPicture;
 }
 
 void Decoder::createAvPacket(uint8_t* parsedData, int size)
