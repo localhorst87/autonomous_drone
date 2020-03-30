@@ -122,15 +122,13 @@ VideoSocket::VideoSocket()
   this->port = 11111;
 }
 
-int VideoSocket::getRawVideoData(unsigned char* buffer)
+int VideoSocket::getRawVideoData(uint8_t* buffer)
 // receives encoded video data and stores it in the given buffer
 // make sure buffer has allocated BUFFER_SIZE = 2048 Bytes!
 {
   int nBytes = recv(this->socketFileDesc, buffer, this->BUFFER_SIZE, 0);
-  if ( this->isEndOfFrame(nBytes) )
-    buffer[nBytes] = '\0';
 
-  return nBytes + 1;
+  return nBytes;
 }
 
 bool VideoSocket::isEndOfFrame(const int& nBytesReceived)

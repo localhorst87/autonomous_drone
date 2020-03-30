@@ -91,7 +91,7 @@ class VideoSocket: public ServerSocket
 
   public:
     VideoSocket();
-    int getRawVideoData(unsigned char*);
+    int getRawVideoData(uint8_t*);
 };
 
 #endif
