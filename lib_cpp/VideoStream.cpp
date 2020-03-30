@@ -14,6 +14,29 @@ RgbImage::RgbImage(AVFrame* rgbFrame) :
   memcpy(this->rawData, rgbFrame->data[0], this->nPoints);
 }
 
+RgbImage& RgbImage::operator=(const RgbImage& rgbImage)
+{
+  this->dataLinesize = rgbImage.dataLinesize;
+  this->width = rgbImage.width;
+  this->height = rgbImage.height;
+  this->nPoints = rgbImage.nPoints;
+  this->rawData = (uint8_t*) malloc(this->nPoints);
+  memcpy(this->rawData, rgbImage.rawData, this->nPoints);
+}
+
+RgbImage::RgbImage()
+{ }
+
+RgbImage::RgbImage(const RgbImage& rgbImage) :
+  dataLinesize(rgbImage.dataLinesize),
+  width(rgbImage.width),
+  height(rgbImage.height),
+  nPoints(rgbImage.nPoints)
+{
+  this->rawData = (uint8_t*) malloc(this->nPoints);
+  memcpy(this->rawData, rgbImage.rawData, this->nPoints);
+}
+
 RgbImage::~RgbImage()
 {
   if (this->rawData)

@@ -17,7 +17,7 @@ extern "C"
   #include <libavcodec/avcodec.h>
   #include <libavutil/avutil.h>
   #include <libswscale/swscale.h>
-  #include "libavutil/imgutils.h"
+  #include <libavutil/imgutils.h>
 }
 
 #include <stdio.h>
@@ -52,6 +52,10 @@ class RgbImage
 
   public:
     RgbImage(AVFrame*);
+    RgbImage(const RgbImage&);
+    RgbImage& operator=(const RgbImage&);
+
+    RgbImage();
     ~RgbImage();
     three_dim_byte_vector getRgbPixels();
     three_dim_byte_vector getRgbPlanes();
