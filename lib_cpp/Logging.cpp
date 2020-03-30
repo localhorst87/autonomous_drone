@@ -50,7 +50,7 @@ bool Job::isValidCommand() const
 bool Job::isExecuting() const
 // checks if the Job is executing at the moment
 {
-  return this->sent && this->response.length() == 0;
+	return this->sent && this->response.length() == 0;
 }
 
 bool Job::isDone() const
@@ -72,11 +72,11 @@ bool Log::addJobToDo(const string& command)
 
   if ( newJob.isValidCommand() )
   {
-    this->jobsToDo.push(newJob);
-    return true;
+		this->jobsToDo.push(newJob);
+		return true;
   }
   else
-  	return false;
+		return false;
 }
 
 Job& Log::getNextJob()
@@ -107,5 +107,5 @@ bool Log::logProcessedJob(Job &job)
 
 void Log::addMeasurement(const MeasurePoint& point)
 {
-  this->measurements.push_back(point);
+	this->measurements.push_back(point);
 }
