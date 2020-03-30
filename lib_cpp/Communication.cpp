@@ -66,7 +66,7 @@ bool ClientSocket::configureSocket()
 // performs configuration steps to be done before establishing the connection.
 // Returns true/false upon successful/unsuccesfull configuration
 {
-  bool blockingDisabled { this->disableBlocking() };
+  bool blockingDisabled { this->disableDefaultBlocking() };
   bool addressConfigures { this->configureAddress() };
 
   return blockingDisabled && addressConfigures;
@@ -96,7 +96,7 @@ bool ServerSocket::configureSocket()
 // performs configuration steps to be done before establishing the connection.
 // Returns true/false upon successful/unsuccesfull configuration
 {
-  bool blockingDisabled { this->disableBlocking() };
+  bool blockingDisabled { this->disableDefaultBlocking() };
   bool configSet { this->configureAddress() };
   bool optionsSet = setsockopt(this->socketFileDesc, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
                     &this->reuseAddress, sizeof(int) ) == 0;
