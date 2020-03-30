@@ -15,6 +15,8 @@ configureAddress --> configureSocket --> connectSocket
 #include <cstring>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 using namespace std;
 
@@ -33,6 +35,7 @@ class TelloSockets
   public:
     bool createSocket();
     bool disconnectSocket();
+    bool disableBlocking();
     virtual bool configureAddress() = 0;
     virtual bool configureSocket() = 0;
     virtual bool connectSocket() = 0;
@@ -65,6 +68,7 @@ class CommandSocket: public ClientSocket
 
   public:
     CommandSocket();
+    ~CommandSocket();
     bool sendCommand(const char*) const;
     char* getResponse();
 };
@@ -77,6 +81,7 @@ class MeasureSocket: public ServerSocket
 
   public:
     MeasureSocket();
+    ~MeasureSocket();
     char* getMeasures();
 };
 
@@ -86,11 +91,9 @@ class VideoSocket: public ServerSocket
     static const int PACKET_SIZE = 1460;
     static const size_t BUFFER_SIZE = 2048;
 
-  private:
-    bool isEndOfFrame(const int&);
-
   public:
     VideoSocket();
+    ~VideoSocket();
     int getRawVideoData(uint8_t*);
 };
 

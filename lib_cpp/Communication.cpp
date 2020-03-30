@@ -10,10 +10,16 @@ bool TelloSockets::createSocket()
 }
 
 bool TelloSockets::disconnectSocket()
-// shuts down socket send and receive operations.
-// Returns true/false upon successful/unsuccesfull shutdown
+// destroys the socket. Returns true/false upon successful/unsuccesfull shutdown
 {
-  return shutdown(this->socketFileDesc, SHUT_RDWR) == 0;
+  return close(this->socketFileDesc) == 0;
+}
+
+bool TelloSockets::disableBlocking()
+// recv() - operation will no longer block the command.
+// Returns true/false upon successful/unsuccesfull configuration
+{
+  return fcntl(this->socketFileDesc, F_SETFL, O_NONBLOCK) == 0;
 }
 
 sockaddr* TelloSockets::getAddress()
@@ -37,7 +43,10 @@ bool ClientSocket::configureSocket()
 // performs configuration steps to be done before establishing the connection.
 // Returns true/false upon successful/unsuccesfull configuration
 {
-  return this->configureAddress();
+  bool blockingDisabled { this->disableBlocking() };
+  bool addressConfigures { this->configureAddress() };
+
+  return blockingDisabled && addressConfigures;
 }
 
 bool ClientSocket::connectSocket()
@@ -64,6 +73,7 @@ bool ServerSocket::configureSocket()
 // performs configuration steps to be done before establishing the connection.
 // Returns true/false upon successful/unsuccesfull configuration
 {
+  bool blockingDisabled { this->disableBlocking() };
   bool configSet { this->configureAddress() };
   bool optionsSet = setsockopt(this->socketFileDesc, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &this->reuseAddress, sizeof(int) ) == 0;
 
@@ -83,6 +93,11 @@ CommandSocket::CommandSocket()
 {
   this->ip = "192.168.10.1";
   this->port = 8889;
+}
+
+CommandSocket::~CommandSocket()
+{
+  this->disconnectSocket();
 }
 
 bool CommandSocket::sendCommand(const char* command) const
@@ -107,6 +122,11 @@ MeasureSocket::MeasureSocket()
   this->port = 8890;
 }
 
+MeasureSocket::~MeasureSocket()
+{
+  this->disconnectSocket();
+}
+
 char* MeasureSocket::getMeasures()
 // reads and returns the drone measurements (in the ego frame)
 {
@@ -122,17 +142,15 @@ VideoSocket::VideoSocket()
   this->port = 11111;
 }
 
+VideoSocket::~VideoSocket()
+{
+  this->disconnectSocket();
+}
+
 int VideoSocket::getRawVideoData(uint8_t* buffer)
 // receives encoded video data and stores it in the given buffer
 // make sure buffer has allocated BUFFER_SIZE = 2048 Bytes!
 {
   int nBytes = recv(this->socketFileDesc, buffer, this->BUFFER_SIZE, 0);
-
   return nBytes;
-}
-
-bool VideoSocket::isEndOfFrame(const int& nBytesReceived)
-// checks if the end of the frame is reached, according to the number of bytes sent in the last datagram packet
-{
-  return nBytesReceived < PACKET_SIZE;
 }
