@@ -9,7 +9,6 @@ RgbImage::RgbImage(AVFrame* rgbFrame) :
   nPoints(rgbFrame->linesize[0]*rgbFrame->height)
 {
   this->checkFrameFormat(rgbFrame); // throws exception if format is not valid
-
   this->rawData = (uint8_t*) malloc(this->nPoints);
   memcpy(this->rawData, rgbFrame->data[0], this->nPoints);
 }
@@ -55,9 +54,8 @@ three_dim_byte_vector RgbImage::getRgbPixels()
 // contains an uint8_t - vector with {red, green, blue} data inside.
 {
   three_dim_byte_vector rgbPixels(this->width, vector<byte_vector>( this->height, byte_vector(3) ) );
-  int heightIdx, widthIdx, rgbIdx;
 
-  for (int i = 0; i < this->nPoints; ++i)
+  for (int i = 0; i < this->nPoints; i++)
   {
     auto pixelIdx = calcPixelIndices(i, WIDTH_HEIGHT_COLOR);
     rgbPixels[ get<0>(pixelIdx) ][ get<1>(pixelIdx) ][ get<2>(pixelIdx) ] = this->rawData[i];
@@ -71,9 +69,8 @@ three_dim_byte_vector RgbImage::getRgbPlanes()
 // green and blue contains a plane of a uint8_t - vector of the picture's size (width x height)
 {
   three_dim_byte_vector rgbPlanes(3, vector<byte_vector>( this->width, byte_vector(this->height) ) );
-  int heightIdx, widthIdx, rgbIdx;
 
-  for (int i = 0; i < this->nPoints; ++i)
+  for (int i = 0; i < this->nPoints; i++)
   {
     auto pixelIdx = calcPixelIndices(i, COLOR_WIDTH_HEIGHT);
     rgbPlanes[ get<0>(pixelIdx) ][ get<1>(pixelIdx) ][ get<2>(pixelIdx) ] = this->rawData[i];
@@ -87,9 +84,9 @@ tuple<int, int, int> RgbImage::calcPixelIndices(int dataIdx, RgbPixelIndexOrder 
 // as a function of the position inside the raw data array
 // 0: width-index, 1: height-index, 2: color-index
 {
-  int heightIdx = dataIdx / this->dataLinesize;
-  int widthIdx = (dataIdx - heightIdx * this->dataLinesize) / 3;
-  int colorIdx = dataIdx % 3;
+  int heightIdx {dataIdx / this->dataLinesize};
+  int widthIdx { (dataIdx - heightIdx * this->dataLinesize) / 3 };
+  int colorIdx {dataIdx % 3};
 
   if (idxOrder == WIDTH_HEIGHT_COLOR)
     return make_tuple(widthIdx, heightIdx, colorIdx);
@@ -153,10 +150,10 @@ bool Decoder::openCodec()
   if (codec->capabilities & CODEC_CAP_TRUNCATED)
     this->codecContext->flags |= CODEC_FLAG_TRUNCATED;
 
-  if (avcodec_open2(codecContext, codec, nullptr) < 0) // returns zero on success, a negative value on error
-    return false;
-  else
+  if (avcodec_open2(codecContext, codec, nullptr) >= 0) // returns zero on success, a negative value on error
     return true;
+  else
+    return false;
 }
 
 bool Decoder::parseEncodedData(uint8_t* encodedData, int size)
@@ -165,7 +162,8 @@ bool Decoder::parseEncodedData(uint8_t* encodedData, int size)
 // a few seconds after starting to receive video stream data!
 {
   int bufferSize = 0; // will be set to size of parsed buffer or 0 if more data is required
-  av_parser_parse2(this->parserContext, this->codecContext, &this->parserBuffer, &bufferSize, encodedData, size, 0, 0, AV_NOPTS_VALUE);
+  av_parser_parse2(this->parserContext, this->codecContext, &this->parserBuffer, &bufferSize,
+                    encodedData, size, 0, 0, AV_NOPTS_VALUE);
 
   if (bufferSize > 0)
   {
@@ -189,14 +187,12 @@ bool Decoder::decodeParsedData()
     return false;
   }
 
-  bool gotPicture = false;
+  bool gotPicture {false};
 
   if (avcodec_send_packet(this->codecContext, &this->avPacket) >= 0)
   {
     if (avcodec_receive_frame(this->codecContext, this->frame) >= 0)
       gotPicture = true;
-    else
-      gotPicture = false;
   }
 
   return gotPicture;
@@ -210,7 +206,7 @@ void Decoder::createAvPacket(uint8_t* parsedData, int size)
   this->avPacket.size = size;
 }
 
-AVFrame Decoder::getFrame()
+AVFrame Decoder::getFrame() const
 // returns the decoced frame
 {
   return *this->frame;

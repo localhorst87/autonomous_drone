@@ -54,7 +54,6 @@ class RgbImage
     RgbImage(AVFrame*);
     RgbImage(const RgbImage&);
     RgbImage& operator=(const RgbImage&);
-
     RgbImage();
     ~RgbImage();
     three_dim_byte_vector getRgbPixels();
@@ -82,7 +81,7 @@ class Decoder
     ~Decoder();
     bool decodeParsedData();
     bool parseEncodedData(uint8_t*, int);
-    AVFrame getFrame();
+    AVFrame getFrame() const;
 };
 
 class Converter
@@ -97,7 +96,7 @@ class Converter
     int destinationWidth = 960;
     int destinationHeight = 720;
     SwsContext* swsContext = nullptr;
-    AVFrame *destinationFrame;
+    AVFrame* destinationFrame;
     uint8_t* buffer = nullptr;
 
   private:
