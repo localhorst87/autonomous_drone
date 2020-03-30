@@ -17,12 +17,15 @@ configureAddress --> configureSocket --> connectSocket
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <ctime>
+#include <algorithm>
 
 using namespace std;
 
 class TelloSockets
 {
   protected:
+    const double BLOCKING_TIME = 0.5;
     string ip;
     int port;
     int socketFileDesc;
@@ -35,7 +38,9 @@ class TelloSockets
   public:
     bool createSocket();
     bool disconnectSocket();
-    bool disableBlocking();
+    bool disableDefaultBlocking();
+    int receiveTimeBlocked(uint8_t*, int);
+
     virtual bool configureAddress() = 0;
     virtual bool configureSocket() = 0;
     virtual bool connectSocket() = 0;
@@ -64,25 +69,25 @@ class CommandSocket: public ClientSocket
 {
   private:
     static const size_t BUFFER_SIZE = 32;
-    char responseBuffer[BUFFER_SIZE];
+    unsigned char responseBuffer[BUFFER_SIZE];
 
   public:
     CommandSocket();
     ~CommandSocket();
     bool sendCommand(const char*) const;
-    char* getResponse();
+    uint8_t* getResponse();
 };
 
 class MeasureSocket: public ServerSocket
 {
   private:
     static const size_t BUFFER_SIZE = 256;
-    char measurementBuffer[BUFFER_SIZE];
+    uint8_t measurementBuffer[BUFFER_SIZE];
 
   public:
     MeasureSocket();
     ~MeasureSocket();
-    char* getMeasures();
+    uint8_t* getMeasures();
 };
 
 class VideoSocket: public ServerSocket

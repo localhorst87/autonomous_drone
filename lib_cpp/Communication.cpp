@@ -15,8 +15,8 @@ bool TelloSockets::disconnectSocket()
   return close(this->socketFileDesc) == 0;
 }
 
-bool TelloSockets::disableBlocking()
-// recv() - operation will no longer block the command.
+bool TelloSockets::disableDefaultBlocking()
+// recv() - operation will no longer infinitely block the command, if no data is received.
 // Returns true/false upon successful/unsuccesfull configuration
 {
   return fcntl(this->socketFileDesc, F_SETFL, O_NONBLOCK) == 0;
@@ -26,6 +26,29 @@ sockaddr* TelloSockets::getAddress()
 // returns the sockaddr pointer required to establish a connection
 {
   return (sockaddr*)&this->address;
+}
+
+int TelloSockets::receiveTimeBlocked(uint8_t* buffer, int bufferSize)
+// tries to receive byte stream for a specified time defined in BLOCKING_TIME
+// property. If bytes are received the function returns immediately the number
+// of received bytes and fills the buffer.
+// Else it returns 0 if no bytes were received within the blocking time.
+{
+  int nBytesReceived {0};
+  time_t startTime, currentTime;
+  double timeElapsed {0};
+
+  time(&startTime);
+
+  while(nBytesReceived <= 0 && timeElapsed < BLOCKING_TIME)
+  {
+    nBytesReceived = recv(this->socketFileDesc, buffer, bufferSize, 0);
+
+    time(&currentTime);
+    timeElapsed = difftime(currentTime, startTime);
+  }
+
+  return max(0, nBytes);
 }
 
 bool ClientSocket::configureAddress()
@@ -75,7 +98,8 @@ bool ServerSocket::configureSocket()
 {
   bool blockingDisabled { this->disableBlocking() };
   bool configSet { this->configureAddress() };
-  bool optionsSet = setsockopt(this->socketFileDesc, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &this->reuseAddress, sizeof(int) ) == 0;
+  bool optionsSet = setsockopt(this->socketFileDesc, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
+                    &this->reuseAddress, sizeof(int) ) == 0;
 
   return configSet && optionsSet;
 }
@@ -107,11 +131,11 @@ bool CommandSocket::sendCommand(const char* command) const
   return send(this->socketFileDesc, command, strlen(command) + 1, 0) != -1; // + 1 to send null termination
 }
 
-char* CommandSocket::getResponse()
+uint8_t* CommandSocket::getResponse()
 // reads and returns the response to the last sent command
 {
   memset(this->responseBuffer, 0, this->BUFFER_SIZE);
-  recv(this->socketFileDesc, this->responseBuffer, this->BUFFER_SIZE, 0);
+  this->receiveTimeBlocked(this->responseBuffer, this->BUFFER_SIZE);
 
   return this->responseBuffer;
 }
@@ -127,11 +151,11 @@ MeasureSocket::~MeasureSocket()
   this->disconnectSocket();
 }
 
-char* MeasureSocket::getMeasures()
+uint8_t* MeasureSocket::getMeasures()
 // reads and returns the drone measurements (in the ego frame)
 {
   memset(this->measurementBuffer, 0, this->BUFFER_SIZE);
-  recv(this->socketFileDesc, this->measurementBuffer, this->BUFFER_SIZE, 0);
+  this->receiveTimeBlocked(this->measurementBuffer, this->BUFFER_SIZE);
 
   return this->measurementBuffer;
 }
@@ -151,6 +175,7 @@ int VideoSocket::getRawVideoData(uint8_t* buffer)
 // receives encoded video data and stores it in the given buffer
 // make sure buffer has allocated BUFFER_SIZE = 2048 Bytes!
 {
-  int nBytes = recv(this->socketFileDesc, buffer, this->BUFFER_SIZE, 0);
+  int nBytes = this->receiveTimeBlocked(buffer, this->BUFFER_SIZE);
+
   return nBytes;
 }
