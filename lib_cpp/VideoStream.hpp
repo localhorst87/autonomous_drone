@@ -68,19 +68,17 @@ class Decoder
     AVCodecParserContext* parserContext = nullptr; // info struct regarding the parser (contains the parser itself!)
     AVFrame* frame; // target frame for decoded data
     AVPacket avPacket;
-    uint8_t* parserBuffer; // will be	set to pointer to parsed buffer or NULL if more data is required
-    bool isParsingDone = false;
 
   private:
     void configureDecoder();
-    void createAvPacket(uint8_t*, int);
     bool openCodec();
 
   public:
     Decoder();
     ~Decoder();
     bool decodeParsedData();
-    bool parseEncodedData(uint8_t*, int);
+    int parseEncodedData(uint8_t*, int);
+    bool readyForDecoding() const;
     AVFrame getFrame() const;
 };
 

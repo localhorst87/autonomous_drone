@@ -137,6 +137,8 @@ void Decoder::configureDecoder()
   this->frame = av_frame_alloc();
   if (!this->frame)
     throw runtime_error("Error allocating frame!");
+
+  av_init_packet(&this->avPacket);
 }
 
 bool Decoder::openCodec()
@@ -156,37 +158,28 @@ bool Decoder::openCodec()
     return false;
 }
 
-bool Decoder::parseEncodedData(uint8_t* encodedData, int size)
+int Decoder::parseEncodedData(uint8_t* encodedData, int size)
 // parses the data and returns true if parsing has finished or false if additional encoded data is required.
 // Important: For useful output a key frame must be sent by the drone's camera. This can take up to
 // a few seconds after starting to receive video stream data!
 {
-  int bufferSize = 0; // will be set to size of parsed buffer or 0 if more data is required
-  av_parser_parse2(this->parserContext, this->codecContext, &this->parserBuffer, &bufferSize,
-                    encodedData, size, 0, 0, AV_NOPTS_VALUE);
+  // int bufferSize = 0; // will be set to size of parsed buffer or 0 if more data is required
 
-  if (bufferSize > 0)
-  {
-    this->createAvPacket(this->parserBuffer, bufferSize);
-    this->isParsingDone = true;
-    return true;
-  }
-  else
-  {
-    this->isParsingDone = false;
-    return false;
-  }
+  cout << "size: " << size << endl;
+
+  int nParsedBytes = av_parser_parse2(this->parserContext, this->codecContext,
+                                  &this->avPacket.data, &this->avPacket.size,
+                                  encodedData, size, 0, 0, AV_NOPTS_VALUE);
+
+  cout << "parsedBytes: "  << nParsedBytes << endl;
+  cout << "ready to decode: "  << (this->avPacket.size > 0) << endl;
+
+  return nParsedBytes;
 }
 
 bool Decoder::decodeParsedData()
 // main function to decode parsed data
 {
-  if (!this->isParsingDone)
-  {
-    printf("No parsed data available. Parse data first! \n");
-    return false;
-  }
-
   bool gotPicture {false};
 
   if (avcodec_send_packet(this->codecContext, &this->avPacket) >= 0)
@@ -198,12 +191,10 @@ bool Decoder::decodeParsedData()
   return gotPicture;
 }
 
-void Decoder::createAvPacket(uint8_t* parsedData, int size)
-// creates an AVPacket, that is used to store compressed data, from parsed data
+bool Decoder::readyForDecoding() const
+// indicates if data can be decoded after parsing
 {
-  av_init_packet(&this->avPacket);
-  this->avPacket.data = parsedData;
-  this->avPacket.size = size;
+  return this->avPacket.size > 0;
 }
 
 AVFrame Decoder::getFrame() const
@@ -230,7 +221,7 @@ void Converter::setSwsContext()
 // sets the color conversion and scaling context from the given parameters
 {
     this->swsContext = sws_getContext(SOURCE_WIDTH, SOURCE_HEIGHT, SOURCE_FORMAT, this->destinationWidth, this->destinationHeight,
-                                      DESTINATION_FORMAT, SWS_BICUBIC, nullptr, nullptr, nullptr);
+                                      DESTINATION_FORMAT, SWS_BILINEAR, nullptr, nullptr, nullptr);
 }
 
 int Converter::allocateBuffer()
