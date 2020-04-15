@@ -48,7 +48,7 @@ int TelloSockets::receiveTimeBlocked(uint8_t* buffer, int bufferSize)
     timeElapsed = difftime(currentTime, startTime);
   }
 
-  return max(0, nBytes);
+  return max(0, nBytesReceived);
 }
 
 bool ClientSocket::configureAddress()
