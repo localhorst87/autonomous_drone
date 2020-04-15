@@ -163,16 +163,9 @@ int Decoder::parseEncodedData(uint8_t* encodedData, int size)
 // Important: For useful output a key frame must be sent by the drone's camera. This can take up to
 // a few seconds after starting to receive video stream data!
 {
-  // int bufferSize = 0; // will be set to size of parsed buffer or 0 if more data is required
-
-  cout << "size: " << size << endl;
-
   int nParsedBytes = av_parser_parse2(this->parserContext, this->codecContext,
                                   &this->avPacket.data, &this->avPacket.size,
                                   encodedData, size, 0, 0, AV_NOPTS_VALUE);
-
-  cout << "parsedBytes: "  << nParsedBytes << endl;
-  cout << "ready to decode: "  << (this->avPacket.size > 0) << endl;
 
   return nParsedBytes;
 }
