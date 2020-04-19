@@ -9,10 +9,6 @@ Steps:
   
     (2) Setting up a decoder and converter to receive a bit map from the raw video data for further CV usage
   
-    (3) Synchronize the API for usage in simulation environment Microsoft Airsim (https://github.com/Microsoft/AirSim)
-  
-    (4) Using OpenCV for perception tasks (object detection, semantic segmentation)
-  
-    (5) Perform some basic autonomous flight maneuvers in the simulation environment
-  
-    (6) Transfer to real-world environment
+    (3) Implementing a visual SLAM algorithm with the drone's mono camera, OpenCV and the drone's IMU data
+    
+    (4) ... will be defined after step 3 :)
