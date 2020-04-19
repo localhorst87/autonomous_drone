@@ -44,14 +44,11 @@ class Log
 {
   private:
     FifoBuffer<Job> jobsToDo;
-    FifoBuffer<Job> jobsDone;
-    FifoBuffer<Job> jobsError;
     vector<MeasurePoint> measurements;
 
   public:
     bool addJobToDo(const string&);
     Job& getNextJob();
-    bool logProcessedJob(Job&);
     void addMeasurement(const MeasurePoint&);
 };
 

@@ -88,23 +88,6 @@ Job& Log::getNextJob()
   return this->jobsToDo.pop(); // a reference to the oldest job of the deque (FIFO principle)
 }
 
-bool Log::logProcessedJob(Job &job)
-// puts the given Job back to the Log (to the according deque, for documentation reasons). Returns true if the Job has been and false if Job hasn't been processed, yet.
-{
-  if ( !job.isDone() ) // not done. Do not add to Log!
-  	return false;
-  else if ( job.finishedSuccessful() )
-  {
-    this->jobsDone.push(job); // done successfully. Add to jobsDone.
-    return true;
-  }
-  else
-  {
-    this->jobsError.push(job); // error occurred. Add to jobsError.
-    return true;
-  }
-}
-
 void Log::addMeasurement(const MeasurePoint& point)
 {
 	this->measurements.push_back(point);
