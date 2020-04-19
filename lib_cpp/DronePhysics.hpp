@@ -56,10 +56,10 @@ class MeasurePoint
     point3d globalToLocalPoint(const point3d&) const;
     point3d getRawAcceleration() const;
     angles3d getAttitudeRadiants() const;
-    void convertStateString(const char*);
 
   public:
-    MeasurePoint(const char*);
+    MeasurePoint();
+    void convertStateString(const char*);
     friend ostream& operator<<(ostream&, const MeasurePoint&);
     float getTotalSpeed() const;
     float getVerticalSpeed() const;

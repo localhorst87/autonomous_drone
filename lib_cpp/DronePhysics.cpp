@@ -11,10 +11,8 @@ static const float FACTOR_MG2SI {GRAVITY / 1000.0}; // converts the acceleration
 static const float FACTOR_DEG2RAD {PI / 180.0}; // converts degree to radiants
 static const float FACTOR_CM2M {0.01}; // converts cm to m
 
-MeasurePoint::MeasurePoint(const char* stateString)
-{
-  this->convertStateString(stateString);
-}
+MeasurePoint::MeasurePoint()
+{ }
 
 ostream& operator<<(ostream& os, const MeasurePoint& mp)
 {
