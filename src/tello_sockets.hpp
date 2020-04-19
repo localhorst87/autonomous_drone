@@ -8,8 +8,8 @@ To activate a socket use the following order of commands:
 configureAddress --> configureSocket --> connectSocket
 */
 
-#ifndef _COMMUNICATION_HPP_
-#define _COMMUNICATION_HPP_
+#ifndef _TELLOSOCKETS_HPP_
+#define _TELLOSOCKETS_HPP_
 
 #include <string>
 #include <cstring>

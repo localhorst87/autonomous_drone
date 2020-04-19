@@ -1,5 +1,5 @@
-#ifndef _DRONEPHYSICS_HPP_
-#define _DRONEPHYSICS_HPP_
+#ifndef _MEASUREMENTS_HPP
+#define _MEASUREMENTS_HPP
 
 #include <string>
 #include <cmath>
@@ -7,14 +7,14 @@
 
 using namespace std;
 
-struct point3d
+struct Point3d
 {
   float x;
   float y;
   float z;
 };
 
-typedef point3d angles3d;
+typedef Point3d AnglesEuler;
 
 struct dronePose
 {
@@ -52,10 +52,10 @@ class MeasurePoint
     droneAltitude altitude;
 
   private:
-    point3d localToGlobalPoint(const point3d&) const;
-    point3d globalToLocalPoint(const point3d&) const;
-    point3d getRawAcceleration() const;
-    angles3d getAttitudeRadiants() const;
+    Point3d localToGlobalPoint(const Point3d&) const;
+    Point3d globalToLocalPoint(const Point3d&) const;
+    Point3d getRawAcceleration() const;
+    AnglesEuler getAttitudeRadiants() const;
 
   public:
     MeasurePoint();
@@ -63,8 +63,8 @@ class MeasurePoint
     friend ostream& operator<<(ostream&, const MeasurePoint&);
     float getTotalSpeed() const;
     float getVerticalSpeed() const;
-    point3d getGlobalAcceleration() const;
-    point3d getLocalAcceleration() const;
+    Point3d getGlobalAcceleration() const;
+    Point3d getLocalAcceleration() const;
     float getForwardAcceleration() const;
     float getVerticalAcceleration() const;
     float getHeightToGround() const;

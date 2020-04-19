@@ -4,16 +4,16 @@ The Job class is a wrapper for drone commands
 The Log class is a buffer for jobs and measurements of the drone
 */
 
-#ifndef _LOGGING_HPP_
-#define _LOGGING_HPP_
+#ifndef _FLIGHT_LOG_HPP
+#define _FLIGHT_LOG_HPP
 
 #include <ctime>
 #include <string>
 #include <vector>
 #include <deque>
 #include <stdexcept>
-#include "FifoBuffer.hpp"
-#include "DronePhysics.hpp"
+#include "fifo_buffer.hpp"
+#include "measurements.hpp"
 
 using namespace std;
 

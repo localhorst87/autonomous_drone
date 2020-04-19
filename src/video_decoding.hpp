@@ -28,8 +28,8 @@ extern "C"
 #include <stdexcept>
 #include <algorithm>
 
-typedef std::vector<std::vector<std::vector<uint8_t>>> three_dim_byte_vector;
-typedef std::vector<uint8_t> byte_vector;
+typedef std::vector<std::vector<std::vector<uint8_t>>> ThreeDimByteVector;
+typedef std::vector<uint8_t> ByteVector;
 
 enum RgbPixelIndexOrder
 {
@@ -56,8 +56,8 @@ class RgbImage
     RgbImage& operator=(const RgbImage&);
     RgbImage();
     ~RgbImage();
-    three_dim_byte_vector getRgbPixels();
-    three_dim_byte_vector getRgbPlanes();
+    ThreeDimByteVector getRgbPixels();
+    ThreeDimByteVector getRgbPlanes();
 };
 
 class Decoder

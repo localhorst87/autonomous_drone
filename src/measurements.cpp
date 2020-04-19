@@ -1,4 +1,4 @@
-#include "DronePhysics.hpp"
+#include "measurements.hpp"
 
 using namespace std;
 
@@ -46,11 +46,11 @@ void MeasurePoint::convertStateString(const char* stateString)
   &(MeasurePoint::pose.accelerationZ) );
 }
 
-point3d MeasurePoint::localToGlobalPoint(const point3d& localPoint) const
+Point3d MeasurePoint::localToGlobalPoint(const Point3d& localPoint) const
 // transforms local ego coordinates to global coordinates (absolute reference to starting pose)
 {
-  point3d globalPoint;
-  angles3d attitude { this->getAttitudeRadiants() };
+  Point3d globalPoint;
+  AnglesEuler attitude { this->getAttitudeRadiants() };
 
   globalPoint.x = cos(attitude.y)*cos(attitude.z) * localPoint.x
   + ( sin(attitude.x)*sin(attitude.y)*cos(attitude.z) - cos(attitude.x)*sin(attitude.z) ) * localPoint.y
@@ -67,10 +67,10 @@ point3d MeasurePoint::localToGlobalPoint(const point3d& localPoint) const
   return globalPoint;
 }
 
-point3d MeasurePoint::globalToLocalPoint(const point3d& globalPoint) const
+Point3d MeasurePoint::globalToLocalPoint(const Point3d& globalPoint) const
 {
-  point3d localPoint;
-  angles3d attitude { this->getAttitudeRadiants() };
+  Point3d localPoint;
+  AnglesEuler attitude { this->getAttitudeRadiants() };
 
   localPoint.x = cos(attitude.y)*cos(attitude.z) * globalPoint.x
   + cos(attitude.y)*sin(attitude.z) * globalPoint.y
@@ -87,10 +87,10 @@ point3d MeasurePoint::globalToLocalPoint(const point3d& globalPoint) const
   return localPoint;
 }
 
-angles3d MeasurePoint::getAttitudeRadiants() const
+AnglesEuler MeasurePoint::getAttitudeRadiants() const
 // returns the angles around the x,y and z-axis in radiants (roll, pitch, yaw)
 {
-  angles3d attitude {this->pose.angleX * FACTOR_DEG2RAD, this->pose.angleY * FACTOR_DEG2RAD, this->pose.angleZ * FACTOR_DEG2RAD};
+  AnglesEuler attitude {this->pose.angleX * FACTOR_DEG2RAD, this->pose.angleY * FACTOR_DEG2RAD, this->pose.angleZ * FACTOR_DEG2RAD};
   return attitude;
 }
 
@@ -104,39 +104,39 @@ float MeasurePoint::getVerticalSpeed() const
   return FACTOR_CM2M * this->pose.speedZ; // [m/s]
 }
 
-point3d MeasurePoint::getRawAcceleration() const
+Point3d MeasurePoint::getRawAcceleration() const
 // returns the raw acceleration in the drone ego COS. No gravity correction !
 {
-  point3d accLocal {FACTOR_MG2SI * this->pose.accelerationX, FACTOR_MG2SI * this->pose.accelerationY, FACTOR_MG2SI * this->pose.accelerationZ};
+  Point3d accLocal {FACTOR_MG2SI * this->pose.accelerationX, FACTOR_MG2SI * this->pose.accelerationY, FACTOR_MG2SI * this->pose.accelerationZ};
   return accLocal; // [m/s²] No gravity correction!
 }
 
-point3d MeasurePoint::getGlobalAcceleration() const
+Point3d MeasurePoint::getGlobalAcceleration() const
 {
-  point3d accLocal { this->getRawAcceleration() };
-  point3d accGlobal { this->localToGlobalPoint(accLocal) };
+  Point3d accLocal { this->getRawAcceleration() };
+  Point3d accGlobal { this->localToGlobalPoint(accLocal) };
   accGlobal.z += GRAVITY; // gravity offset correction
   return accGlobal; // [m/s²]
 }
 
-point3d MeasurePoint::getLocalAcceleration() const
+Point3d MeasurePoint::getLocalAcceleration() const
   // returns the gravity corrected acceleration in the drone ego COS.
 {
-  point3d accGlobal { this->getGlobalAcceleration() }; // returns gravity corrected acceleration in global COS
+  Point3d accGlobal { this->getGlobalAcceleration() }; // returns gravity corrected acceleration in global COS
   return this->globalToLocalPoint(accGlobal);
 }
 
 float MeasurePoint::getForwardAcceleration() const
 // returns the acceleration regarding the yaw-direction of the camera view
 {
-  point3d accGlobal { this->getGlobalAcceleration() };
-  angles3d attitude { this->getAttitudeRadiants() };
+  Point3d accGlobal { this->getGlobalAcceleration() };
+  AnglesEuler attitude { this->getAttitudeRadiants() };
   return cos(attitude.z)*accGlobal.x + sin(attitude.z)*accGlobal.y; // [m/s²]
 }
 
 float MeasurePoint::getVerticalAcceleration() const
 {
-  point3d accGlobal { this->getGlobalAcceleration() };
+  Point3d accGlobal { this->getGlobalAcceleration() };
   return accGlobal.z; // [m/s²]
 }
 

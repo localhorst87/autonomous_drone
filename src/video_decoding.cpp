@@ -49,11 +49,11 @@ void RgbImage::checkFrameFormat(AVFrame* frame)
     throw invalid_argument("Frame is not of type AV_PIX_FMT_RGB24");
 }
 
-three_dim_byte_vector RgbImage::getRgbPixels()
+ThreeDimByteVector RgbImage::getRgbPixels()
 // returns a three-dimensional vector of size width x height x 3. So each pixel in the picture
 // contains an uint8_t - vector with {red, green, blue} data inside.
 {
-  three_dim_byte_vector rgbPixels(this->width, vector<byte_vector>( this->height, byte_vector(3) ) );
+  ThreeDimByteVector rgbPixels(this->width, vector<ByteVector>( this->height, ByteVector(3) ) );
 
   for (int i = 0; i < this->nPoints; i++)
   {
@@ -64,11 +64,11 @@ three_dim_byte_vector RgbImage::getRgbPixels()
   return rgbPixels;
 }
 
-three_dim_byte_vector RgbImage::getRgbPlanes()
+ThreeDimByteVector RgbImage::getRgbPlanes()
 // returns a three-dimensional vector of size 3 x width x height. So each of the colors red,
 // green and blue contains a plane of a uint8_t - vector of the picture's size (width x height)
 {
-  three_dim_byte_vector rgbPlanes(3, vector<byte_vector>( this->width, byte_vector(this->height) ) );
+  ThreeDimByteVector rgbPlanes(3, vector<ByteVector>( this->width, ByteVector(this->height) ) );
 
   for (int i = 0; i < this->nPoints; i++)
   {
