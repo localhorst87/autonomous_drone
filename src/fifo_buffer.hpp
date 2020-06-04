@@ -21,26 +21,35 @@ class FifoBuffer
   public:
     FifoBuffer();
     FifoBuffer(int);
+    FifoBuffer& operator=(const FifoBuffer&);
     int getMaxSize();
     int size();
     bool isEmpty();
-    bool push(T&);
-    bool push(T&&);
-    T& pop();
+    void push(T&);
+    void push(T&&);
+    T pop();
 };
 
 // template definition must go in the same file to avoid linking errors...
 
 template<class T>
-FifoBuffer<T>::FifoBuffer() : maxSize(-1) { }
+FifoBuffer<T>::FifoBuffer() : maxSize(-1)
+{ }
 
 template<class T>
 FifoBuffer<T>::FifoBuffer(int maxSize)
 {
-  if (maxSize >= 0)
+  if (maxSize > 0)
     this->maxSize = maxSize;
   else
     this->maxSize = -1;
+}
+
+template<class T>
+FifoBuffer<T>& FifoBuffer<T>::operator=(const FifoBuffer& rhs)
+{
+  this->elements = rhs.elements;
+  this->maxSize = rhs.maxSize;
 }
 
 template<class T>
@@ -62,35 +71,29 @@ bool FifoBuffer<T>::isEmpty()
 }
 
 template<class T>
-bool FifoBuffer<T>::push(T& newElement)
+void FifoBuffer<T>::push(T& newElement)
 {
-  if ( (this->maxSize > 0 && this->size() < this->maxSize) || this->maxSize == -1 )
-  {
-    this->elements.push_back(newElement);
-    return true;
-  }
-  else
-    return false;
+  if (this->maxSize > 0 && this->size() >= this->maxSize)
+    this->elements.pop_front(); // pop oldest element, if buffer is full
+
+  this->elements.push_back(newElement);
 }
 
 template<class T>
-bool FifoBuffer<T>::push(T&& newElement)
+void FifoBuffer<T>::push(T&& newElement)
 {
-  if ( (this->maxSize > 0 && this->size() < this->maxSize) || this->maxSize == -1 )
-  {
-    this->elements.push_back(newElement);
-    return true;
-  }
-  else
-    return false;
+  if (this->maxSize > 0 && this->size() >= this->maxSize)
+    this->elements.pop_front(); // pop oldest element, if buffer is full
+
+  this->elements.push_back(newElement);
 }
 
 template<class T>
-T& FifoBuffer<T>::pop()
+T FifoBuffer<T>::pop()
 {
   if (this->size() == 0) throw out_of_range("No elements available");
 
-  T& outElement = this->elements.front();
+  T outElement = this->elements.front();
   this->elements.pop_front();
 
   return outElement;
