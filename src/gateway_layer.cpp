@@ -11,9 +11,9 @@ static const uint8_t TAKEOFF_COMMAND[] = "takeoff";
 static const uint8_t LANDING_COMMAND[] = "land";
 static const uint8_t STOP_MOTORS_COMMAND[] = "emergency";
 static const uint8_t COMMAND_MODE_MSG[] = "command";
-static const uint8_t POSITIVE_FEEDBACK_MSG[] = "ok";
 static const uint8_t ACTIVATE_VIDEO_MSG[] = "streamon";
 static const uint8_t DEACTIVATE_VIDEO_MSG[] = "streamoff";
+static const string POSITIVE_FEEDBACK_MSG = "ok";
 
 VideoController::VideoController(ReceivingBoundary* recvBoundary, CommunicationInterface* videoComInterface)
 {
@@ -717,4 +717,440 @@ float UnitConverter::convert(float point, string sourceUnit, string targetUnit)
     point *= factor;
 
   return point;
+}
+
+CouplingState::~CouplingState()
+{ }
+
+void CouplingState::setContext(ControllerProxy* context)
+{
+  this->controller = context;
+}
+
+void DisconnectedState::connect()
+{
+  CommunicationInterface* cmdInterface = this->controller->getCommandInterface();
+
+  if (!cmdInterface->isConnected() )
+    cmdInterface->open();
+
+  if (cmdInterface->isConnected() )
+    this->controller->changeCouplingState(new IdleState);
+}
+
+void DisconnectedState::disconnect()
+{
+  // do nothing (already disconnected)
+}
+
+void DisconnectedState::activateInteraction()
+{
+  // do nothing (needs to connect first)
+}
+
+void DisconnectedState::activateVideo()
+{
+  // do nothing (needs interactive mode first)
+}
+
+void DisconnectedState::deactivateVideo()
+{
+  // do nothing (needs interactive vision mode first)
+}
+
+void DisconnectedState::getUserInfo()
+{
+  printf("CoulingState: Disconnected \n");
+}
+
+void IdleState::connect()
+{
+  // do nothing (already connected)
+}
+
+void IdleState::disconnect()
+{
+  CommunicationInterface* cmdInterface = this->controller->getCommandInterface();
+
+  if (cmdInterface->isConnected() )
+    cmdInterface->close();
+
+  if (!cmdInterface->isConnected() )
+    this->controller->changeCouplingState(new DisconnectedState);
+}
+
+void IdleState::activateInteraction()
+{
+  CommunicationInterface* cmdInterface = this->controller->getCommandInterface();
+
+  if (cmdInterface->sendData(COMMAND_MODE_MSG) == 0) // activate command mode
+  {
+    cmdInterface->close(); // if sending was not successful, we are not connected
+    this->controller->changeCouplingState(new DisconnectedState);
+    return;
+  }
+
+  if (cmdInterface->receiveData() == 0) // check if got response
+  {
+    cmdInterface->close(); // if no data received, something must be wrong
+    this->controller->changeCouplingState(new DisconnectedState);
+    return;
+  }
+
+  string response = (char*)cmdInterface->getData(); // get response
+  if (response == POSITIVE_FEEDBACK_MSG)
+    this->controller->changeCouplingState(new InteractiveState);
+}
+
+void IdleState::activateVideo()
+{
+  // do nothing (needs interactive mode first)
+}
+
+void IdleState::deactivateVideo()
+{
+  // do nothing (needs interactive vision mode first)
+}
+
+void IdleState::getUserInfo()
+{
+  printf("CoulingState: Idle \n");
+}
+
+void InteractiveState::connect()
+{
+  // do nothing (already connected)
+}
+
+void InteractiveState::disconnect()
+{
+  CommunicationInterface* cmdInterface = this->controller->getCommandInterface();
+
+  if (cmdInterface->isConnected() )
+    cmdInterface->close();
+
+  if (!cmdInterface->isConnected() )
+    this->controller->changeCouplingState(new DisconnectedState);
+}
+
+void InteractiveState::activateInteraction()
+{
+  // do nothing (already in interactive mode)
+}
+
+void InteractiveState::activateVideo()
+{
+  CommunicationInterface* cmdInterface = this->controller->getCommandInterface();
+
+  if (cmdInterface->sendData(ACTIVATE_VIDEO_MSG) == 0) // activate command mode
+  {
+    cmdInterface->close(); // if sending was not successful, we are not connected
+    this->controller->changeCouplingState(new DisconnectedState);
+    return;
+  }
+
+  if (cmdInterface->receiveData() == 0) // check if got response
+  {
+    cmdInterface->close(); // if no data received, something must be wrong
+    this->controller->changeCouplingState(new DisconnectedState);
+    return;
+  }
+
+  string response = (char*)cmdInterface->getData(); // get response
+  if (response == POSITIVE_FEEDBACK_MSG)
+    this->controller->changeCouplingState(new InteractiveVisionState);
+}
+
+void InteractiveState::deactivateVideo()
+{
+  // do nothing (needs interactive vision mode first)
+}
+
+void InteractiveState::getUserInfo()
+{
+  printf("CoulingState: Interactive \n");
+}
+
+void InteractiveVisionState::connect()
+{
+  // do nothing (already connected)
+}
+
+void InteractiveVisionState::disconnect()
+{
+  CommunicationInterface* cmdInterface = this->controller->getCommandInterface();
+
+  if (cmdInterface->isConnected() )
+    cmdInterface->close();
+
+  if (!cmdInterface->isConnected() )
+    this->controller->changeCouplingState(new DisconnectedState);
+}
+
+void InteractiveVisionState::activateInteraction()
+{
+  // do nothing (already in interactive mode)
+}
+
+void InteractiveVisionState::activateVideo()
+{
+  // do nothing (is already streaming)
+}
+
+void InteractiveVisionState::deactivateVideo()
+{
+  CommunicationInterface* cmdInterface = this->controller->getCommandInterface();
+
+  if (cmdInterface->sendData(DEACTIVATE_VIDEO_MSG) == 0) // activate command mode
+  {
+    cmdInterface->close(); // if sending was not successful, we are not connected
+    this->controller->changeCouplingState(new DisconnectedState);
+    return;
+  }
+
+  if (cmdInterface->receiveData() == 0) // check if got response
+  {
+    cmdInterface->close(); // if no data received, something must be wrong
+    this->controller->changeCouplingState(new DisconnectedState);
+    return;
+  }
+
+  string response = (char*)cmdInterface->getData(); // get response
+  if (response == POSITIVE_FEEDBACK_MSG)
+    this->controller->changeCouplingState(new InteractiveState);
+}
+
+void InteractiveVisionState::getUserInfo()
+{
+  printf("CoulingState: Interactive Vision \n");
+}
+
+FlightState::~FlightState()
+{ }
+
+void FlightState::setContext(ControllerProxy* context)
+{
+  this->controller = context;
+}
+
+void GroundState::takeoff()
+{
+  CommunicationInterface* cmdInterface = this->controller->getCommandInterface();
+
+  if (cmdInterface->sendData(TAKEOFF_COMMAND) == 0) // send takeoff command
+    return;
+
+  if (cmdInterface->receiveData(BLOCKING_TIME_RECEIVE) == 0) // check if got response
+    return;
+
+  string response = (char*)cmdInterface->getData(); // get response
+  if (response == POSITIVE_FEEDBACK_MSG)
+    this->controller->changeFlightState(new AirState);
+}
+
+void GroundState::land()
+{
+  // do nothing (is already on ground)
+}
+
+void GroundState::stopMotors()
+{
+  // do nothing (motors not running)
+}
+
+void GroundState::getUserInfo()
+{
+  printf("FlightState: Ground \n");
+}
+
+void AirState::takeoff()
+{
+  // do nothing (is already in the air)
+}
+
+void AirState::land()
+{
+  CommunicationInterface* cmdInterface = this->controller->getCommandInterface();
+
+  if (cmdInterface->sendData(LANDING_COMMAND) == 0) // send takeoff command
+    return;
+
+  if (cmdInterface->receiveData(BLOCKING_TIME_RECEIVE) == 0) // check if got response
+    return;
+
+  string response = (char*)cmdInterface->getData(); // get response
+  if (response == POSITIVE_FEEDBACK_MSG)
+    this->controller->changeFlightState(new GroundState);
+}
+
+void AirState::stopMotors()
+{
+  CommunicationInterface* cmdInterface = this->controller->getCommandInterface();
+
+  if (cmdInterface->sendData(STOP_MOTORS_COMMAND) == 0) // send takeoff command
+    return;
+
+  if (cmdInterface->receiveData() == 0) // check if got response
+    return;
+
+  string response = (char*)cmdInterface->getData(); // get response
+  if (response == POSITIVE_FEEDBACK_MSG)
+    this->controller->changeFlightState(new CrashedState);
+}
+
+void AirState::getUserInfo()
+{
+  printf("FlightState: Air \n");
+}
+
+void CrashedState::takeoff()
+{
+  CommunicationInterface* cmdInterface = this->controller->getCommandInterface();
+
+  if (cmdInterface->sendData(TAKEOFF_COMMAND) == 0) // send takeoff command
+    return;
+
+  if (cmdInterface->receiveData(BLOCKING_TIME_RECEIVE) == 0) // check if got response
+    return;
+
+  string response = (char*)cmdInterface->getData(); // get response
+  if (response == POSITIVE_FEEDBACK_MSG)
+    this->controller->changeFlightState(new AirState);
+}
+
+void CrashedState::land()
+{
+  // do nothing (has crashed)
+}
+
+void CrashedState::stopMotors()
+{
+  // do nothing (motors not running)
+}
+
+void CrashedState::getUserInfo()
+{
+  printf("FlightState: Crashed \n");
+}
+
+ControllerProxy::ControllerProxy(CommunicationInterface* cmdInterface) :
+commandInterface(cmdInterface),
+couplingState(nullptr),
+flightState(nullptr)
+{
+  this->changeCouplingState(new DisconnectedState);
+  this->changeFlightState(new GroundState);
+}
+
+ControllerProxy::~ControllerProxy()
+{
+  this->stopFlight();
+  this->stopVideoStream();
+  this->stopSensorStream();
+  this->couplingState->disconnect();
+
+  if(this->couplingState != nullptr)
+    delete this->couplingState;
+
+  if(this->flightState != nullptr)
+    delete this->flightState;
+}
+
+void ControllerProxy::setCommandInterface(CommunicationInterface* cmdInterface)
+{
+  this->commandInterface = cmdInterface;
+}
+
+CommunicationInterface* ControllerProxy::getCommandInterface()
+{
+  return this->commandInterface;
+}
+
+void ControllerProxy::changeCouplingState(CouplingState* newCouplingState)
+{
+  if(this->couplingState != nullptr)
+    delete this->couplingState;
+  this->couplingState = newCouplingState;
+  this->couplingState->setContext(this);
+  this->couplingState->getUserInfo();
+}
+
+void ControllerProxy::changeFlightState(FlightState* newFlightState)
+{
+  if(this->flightState != nullptr)
+    delete this->flightState;
+  this->flightState = newFlightState;
+  this->flightState->setContext(this);
+  this->flightState->getUserInfo();
+}
+
+void ControllerProxy::setVideoController(Controller* vidController)
+{
+  this->videoController = vidController;
+}
+
+void ControllerProxy::setSensorController(Controller* sensController)
+{
+  this->sensorController = sensController;
+}
+
+void ControllerProxy::startFlight()
+{
+  this->couplingState->connect(); // make sure command interface is connected
+  this->couplingState->activateInteraction(); // make sure we are in interactive mode
+  this->flightState->takeoff();
+}
+
+void ControllerProxy::stopFlight()
+{
+  this->flightState->land();
+}
+
+void ControllerProxy::doEmergencyStop()
+{
+  this->flightState->stopMotors();
+}
+
+void ControllerProxy::startVideoStream()
+// makes sure all prerequisites are fulfilled. Then starts VideoController thread
+// VideoController requires the InteractiveVisionState
+{
+  this->couplingState->connect(); // make sure command interface is connected
+  this->couplingState->activateInteraction(); // make sure we are in interactive mode
+  this->couplingState->activateVideo(); // start Tello sending the video stream
+
+  if (!this->videoController->isConnected() )
+    this->videoController->connect();
+
+  this->videoController->start(); // start VideoController thread
+}
+
+void ControllerProxy::stopVideoStream()
+{
+  this->videoController->stop(); // stop VideoController thread
+  this->couplingState->deactivateVideo(); // stop Tello sending the video stream
+
+  if (this->videoController->isConnected() )
+    this->videoController->disconnect();
+}
+
+void ControllerProxy::startSensorStream()
+// makes sure all prerequisites are fulfilled. Then starts SensorController thread
+// SensorController requires the InteractiveState
+{
+  this->couplingState->connect(); // make sure command interface is connected
+  this->couplingState->activateInteraction(); // make sure we are in interactive mode
+
+  if (!this->sensorController->isConnected() )
+    this->sensorController->connect();
+
+  this->sensorController->start(); // start SensorController thread
+}
+
+void ControllerProxy::stopSensorStream()
+{
+  this->sensorController->stop(); // stop SensorController thread
+
+  if (this->sensorController->isConnected() )
+    this->sensorController->disconnect();
 }

@@ -242,4 +242,145 @@ public:
   float convert(float, string, string);
 };
 
+class ControllerProxy;
+
+class CouplingState
+// represents the level of possible interaction with the drone
+// --> DisconnectedState: No connection between client and Tello
+// --> IdleState: Command interface between client and Tello established.
+// --> InteractiveState: In Tello "SDK-Mode". Can now receive commands and send sensor data
+// --> InteractiveVisionState: Is additionaly to the InteractiveState streaming video data
+{
+protected:
+  ControllerProxy* controller;
+
+public:
+  virtual ~CouplingState();
+  void setContext(ControllerProxy*);
+  virtual void connect() = 0;
+  virtual void disconnect() = 0;
+  virtual void activateInteraction() = 0;
+  virtual void activateVideo() = 0;
+  virtual void deactivateVideo() = 0;
+  virtual void getUserInfo() = 0;
+};
+
+class DisconnectedState : public CouplingState
+{
+public:
+  virtual void connect() final;
+  virtual void disconnect() final;
+  virtual void activateInteraction() final;
+  virtual void activateVideo() final;
+  virtual void deactivateVideo() final;
+  virtual void getUserInfo() final;
+};
+
+class IdleState : public CouplingState
+{
+public:
+  virtual void connect() final;
+  virtual void disconnect() final;
+  virtual void activateInteraction() final;
+  virtual void activateVideo() final;
+  virtual void deactivateVideo() final;
+  virtual void getUserInfo() final;
+};
+
+class InteractiveState : public CouplingState
+{
+public:
+  virtual void connect() final;
+  virtual void disconnect() final;
+  virtual void activateInteraction() final;
+  virtual void activateVideo() final;
+  virtual void deactivateVideo() final;
+  virtual void getUserInfo() final;
+};
+
+class InteractiveVisionState : public CouplingState
+{
+public:
+  virtual void connect() final;
+  virtual void disconnect() final;
+  virtual void activateInteraction() final;
+  virtual void activateVideo() final;
+  virtual void deactivateVideo() final;
+  virtual void getUserInfo() final;
+};
+
+class FlightState
+// State Handler for flight state
+// --> GroundState: Drone is (intentionally) on the ground
+// --> AirState: Drone is in the air
+// --> CrashedState: Drone has (intentionally) crashed due to emergency reasons
+{
+protected:
+  ControllerProxy* controller;
+  const float BLOCKING_TIME_RECEIVE = 10.0; // [s]
+
+public:
+  virtual ~FlightState();
+  void setContext(ControllerProxy*);
+  virtual void takeoff() = 0;
+  virtual void land() = 0;
+  virtual void stopMotors() = 0;
+  virtual void getUserInfo() = 0;
+};
+
+class GroundState : public FlightState
+{
+  virtual void takeoff() final;
+  virtual void land() final;
+  virtual void stopMotors() final;
+  virtual void getUserInfo() final;
+};
+
+class AirState : public FlightState
+{
+  virtual void takeoff() final;
+  virtual void land() final;
+  virtual void stopMotors() final;
+  virtual void getUserInfo() final;
+};
+
+class CrashedState : public FlightState
+{
+  virtual void takeoff() final;
+  virtual void land() final;
+  virtual void stopMotors() final;
+  virtual void getUserInfo() final;
+};
+
+class ControllerProxy
+// no implementation of Controller, as the overhead is too big (--> common state handler
+// required, as each ControllerProxy requires the CouplingState, --> additional public
+// methods for Controller, because VideoController and SensorController require different
+// CouplingStates to stream their data)
+{
+private:
+  Controller* videoController;
+  Controller* sensorController;
+  CommunicationInterface* commandInterface;
+  CouplingState* couplingState;
+  FlightState* flightState;
+
+public:
+  ControllerProxy(CommunicationInterface*);
+  ~ControllerProxy();
+  void setCommandInterface(CommunicationInterface*);
+  CommunicationInterface* getCommandInterface();
+  void changeCouplingState(CouplingState*);
+  void changeFlightState(FlightState*);
+  void setVideoController(Controller*);
+  void setSensorController(Controller*);
+  void startFlight();
+  void stopFlight();
+  void doEmergencyStop();
+  void startVideoStream();
+  void stopVideoStream();
+  void startSensorStream();
+  void stopSensorStream();
+};
+
 #endif
