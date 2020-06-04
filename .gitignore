@@ -1,2 +1,6 @@
 *.o
+*.gch
 test.cpp
+plantuml
+cut.cpp
+debugger

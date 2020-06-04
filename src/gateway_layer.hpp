@@ -146,7 +146,7 @@ public:
 class VideoController : public Controller
 {
 private:
-  const size_t DATAGRAM_SIZE = 1460;
+  const int DATAGRAM_SIZE = 1460;
   ImageFormat targetFormat = RGB_24;
   PixelIndexOrder targetIndexOrder = WIDTH_HEIGHT_CHANNEL;
   VideoDecoder decoder;
@@ -176,6 +176,70 @@ public:
   virtual bool connect() final;
   virtual bool disconnect() final;
   virtual bool isConnected() final;
+};
+
+class SensorDataConverter
+{
+private:
+  float accelerationX; // longitudinal acceleration towards DRONE COS (raw, NO gravity correction) [1e-3 g]
+  float accelerationY; // lateral acceleration towards DRONE COS (raw, NO gravity correction) [1e-3 g]
+  float accelerationZ; // vertical acceleration towards DRONE COS (raw, NO gravity correction) [1e-3 g]
+  int angleX; // roll angle [deg] towards global COS (start pose of drone)
+  int angleY; // pitch angle [deg] towards global COS (start pose of drone)
+  int angleZ; // yaw angle [deg] towards global COS (start pose of drone)
+  int tofHeight; // height above ground from lidar measurement [cm]
+  float absHeight; // absolute height above N.N. from barometer data [m]
+
+private:
+  void convertStateString(const char*);
+  TranslationPoint getLocalAcceleration() const;
+  TranslationPoint getGlobalAcceleration() const;
+  RotationPoint getAttitude() const;
+  TranslationPoint localToGlobal(const TranslationPoint&, const RotationPoint&) const;
+  TranslationPoint globalToLocal(const TranslationPoint&, const RotationPoint&) const;
+
+public:
+  SensorDataPoint convert(const char*);
+};
+
+class SensorController : public Controller
+{
+private:
+  SensorDataConverter converter;
+  SensorDataPoint currentSensorData;
+  bool isProcessing = false;
+  thread streamThread;
+
+private:
+  void makeSensorPointData();
+
+protected:
+  virtual void transmitNewData() final;
+
+public:
+  SensorController(ReceivingBoundary*, CommunicationInterface*);
+  virtual void start() final;
+  virtual void stop() final;
+  virtual bool connect() final;
+  virtual bool disconnect() final;
+  virtual bool isConnected() final;
+};
+
+class UnitConverter
+// used to convert the quantities of TranslationPoints to a target unit
+{
+private:
+  map<pair<string,string>, float> conversionTable;
+
+private:
+  float getFactor(string, string);
+
+public:
+  UnitConverter();
+  void convert(TranslationPoint*, string);
+  TranslationPoint convert(TranslationPoint, string);
+  void convert(float*, string, string);
+  float convert(float, string, string);
 };
 
 #endif

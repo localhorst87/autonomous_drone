@@ -6,11 +6,6 @@ using namespace std;
 extern const float GRAVITY {9.81}; // [m/s²]
 extern const float PI {3.141593};
 
-// conversion factors --> internal linkage only
-static const float FACTOR_MG2SI {GRAVITY / 1000.0}; // converts the acceleration from the milli-gravity to SI unit [0.001g] --> [m/s²]
-static const float FACTOR_DEG2RAD {PI / 180.0}; // converts degree to radiants
-static const float FACTOR_CM2M {0.01}; // converts cm to m
-
 // commands
 static const uint8_t TAKEOFF_COMMAND[] = "takeoff";
 static const uint8_t LANDING_COMMAND[] = "land";
@@ -454,4 +449,272 @@ tuple<int, int, int> ImageConverter::calcPixelIndices(int dataIdx, PixelIndexOrd
     return make_tuple(channelIdx, widthIdx, heightIdx);
   else
     throw invalid_argument("Unknown PixelIndexOrder argument");
+}
+
+SensorController::SensorController(ReceivingBoundary* recvBoundary, CommunicationInterface* sensorComInterface)
+{
+  this->receivingBoundary = recvBoundary;
+  this->comInterface = sensorComInterface;
+}
+
+void SensorController::transmitNewData()
+{
+  this->receivingBoundary->processSensorData(this->currentSensorData);
+}
+
+void SensorController::start()
+{
+  if (!this->isProcessing)
+  {
+    this->isProcessing = true;
+    this->streamThread = thread(&SensorController::makeSensorPointData, this);
+  }
+}
+
+void SensorController::stop()
+{
+  if (this->isProcessing)
+  {
+    this->isProcessing = false;
+    this->streamThread.join();
+  }
+}
+
+bool SensorController::connect()
+{
+  if (!this->isConnected() )
+    this->comInterface->open();
+
+  return this->isConnected();
+}
+
+bool SensorController::disconnect()
+{
+  if (this->isConnected() )
+    this->comInterface->close();
+
+  return this->comInterface->isConnected() == false;
+}
+
+bool SensorController::isConnected()
+{
+  return this->comInterface->isConnected();
+}
+
+void SensorController::makeSensorPointData()
+// collects and processes sensor data. Once new sensor data is available,
+// it is transmitted via the ReceivingBoundary
+{
+  uint8_t* dataString {nullptr};
+  int nBytesRead;
+  Timepoint t;
+
+  while(this->isProcessing)
+  {
+    t = HiResClock::now();
+    nBytesRead = this->comInterface->receiveData();
+    if (nBytesRead > 0)
+    {
+      dataString = this->comInterface->getData();
+      this->currentSensorData = this->converter.convert( (char*)dataString);
+      this->currentSensorData.time = t;
+      this->transmitNewData();
+    }
+  }
+}
+
+SensorDataPoint SensorDataConverter::convert(const char* stateString)
+{
+  UnitConverter unitConverter;
+  this->convertStateString(stateString);
+
+  SensorDataPoint dataPoint;
+  dataPoint.accelerationLocal = this->getLocalAcceleration();
+  dataPoint.accelerationGlobal = this->getGlobalAcceleration();
+  dataPoint.rotationGlobal = this->getAttitude();
+  dataPoint.heightToGround = unitConverter.convert(this->tofHeight, "cm", "m");
+  dataPoint.heightToNN = this->absHeight;
+
+  return dataPoint;
+}
+
+void SensorDataConverter::convertStateString(const char* stateString)
+{
+  sscanf(stateString, "pitch:%d;roll:%d;yaw:%d;vgx:%*d;vgy:%*d;vgz:%*d;templ:%*d;temph:%*d;tof:%d;h:%*d;bat:%*d;baro:%f;time:%*d;agx:%f;agy:%f;agz:%f",
+  &(SensorDataConverter::angleY),
+  &(SensorDataConverter::angleX),
+  &(SensorDataConverter::angleZ),
+  &(SensorDataConverter::tofHeight),
+  &(SensorDataConverter::absHeight),
+  &(SensorDataConverter::accelerationX),
+  &(SensorDataConverter::accelerationY),
+  &(SensorDataConverter::accelerationZ) );
+}
+
+TranslationPoint SensorDataConverter::getLocalAcceleration() const
+{
+  UnitConverter unitConverter;
+  TranslationPoint accLocal;
+  accLocal.x = this->accelerationX;
+  accLocal.y = this->accelerationY;
+  accLocal.z = this->accelerationZ;
+  accLocal.unit = "mg";
+
+  unitConverter.convert(&accLocal, "m/s²");
+
+  return accLocal;
+}
+
+TranslationPoint SensorDataConverter::getGlobalAcceleration() const
+{
+  TranslationPoint accLocal { this->getLocalAcceleration() };
+  RotationPoint attitude { this->getAttitude() };
+  TranslationPoint accGlobal { this->localToGlobal(accLocal, attitude) };
+  accGlobal.z += GRAVITY; // gravity offset correction
+
+  return accGlobal;
+}
+
+RotationPoint SensorDataConverter::getAttitude() const
+// returns the angles around the x,y and z-axis in radiants (roll, pitch, yaw)
+{
+  UnitConverter unitConverter;
+  RotationPoint attitude;
+  attitude.x = this->angleX;
+  attitude.y = this->angleY;
+  attitude.z = this->angleZ;
+  attitude.unit = "deg";
+
+  unitConverter.convert(&attitude, "rad");
+
+  return attitude;
+}
+
+TranslationPoint SensorDataConverter::localToGlobal(const TranslationPoint& localPoint, const RotationPoint& attitude) const
+// transforms local ego coordinates to global coordinates (absolute reference to starting pose)
+// attitude's unit must be in radiants!
+{
+  TranslationPoint globalPoint;
+
+  globalPoint.x = cos(attitude.y)*cos(attitude.z) * localPoint.x
+  + ( sin(attitude.x)*sin(attitude.y)*cos(attitude.z) - cos(attitude.x)*sin(attitude.z) ) * localPoint.y
+  + ( cos(attitude.x)*sin(attitude.y)*cos(attitude.z) + sin(attitude.x)*sin(attitude.z) ) * localPoint.z;
+
+  globalPoint.y = cos(attitude.y)*sin(attitude.z) * localPoint.x
+  + ( sin(attitude.x)*sin(attitude.y)*sin(attitude.z) + cos(attitude.x)*cos(attitude.z) ) * localPoint.y
+  + ( cos(attitude.x)*sin(attitude.y)*sin(attitude.z) - sin(attitude.x)*cos(attitude.z) ) * localPoint.z;
+
+  globalPoint.z = -sin(attitude.y) * localPoint.x
+  + sin(attitude.x)*cos(attitude.y) * localPoint.y
+  + cos(attitude.x)*cos(attitude.y) * localPoint.z;
+
+  globalPoint.unit = localPoint.unit;
+
+  return globalPoint;
+}
+
+TranslationPoint SensorDataConverter::globalToLocal(const TranslationPoint& globalPoint, const RotationPoint& attitude) const
+// transforms global coordinates to local ego coordinates of the drone
+// attitude's unit must be in radiants!
+{
+  TranslationPoint localPoint;
+
+  localPoint.x = cos(attitude.y)*cos(attitude.z) * globalPoint.x
+  + cos(attitude.y)*sin(attitude.z) * globalPoint.y
+  - sin(attitude.y) * globalPoint.z;
+
+  localPoint.y = ( sin(attitude.x)*sin(attitude.y)*cos(attitude.z) - cos(attitude.x)*sin(attitude.z) ) * globalPoint.x
+  + ( sin(attitude.x)*sin(attitude.y)*sin(attitude.z) + cos(attitude.x)*cos(attitude.z) ) * globalPoint.y
+  + sin(attitude.x)*cos(attitude.y) * globalPoint.z;
+
+  localPoint.z = ( cos(attitude.x)*sin(attitude.y)*cos(attitude.z) + sin(attitude.x)*sin(attitude.z) ) * globalPoint.x
+  + ( cos(attitude.x)*sin(attitude.y)*sin(attitude.z) - sin(attitude.x)*cos(attitude.z) ) * globalPoint.y
+  + cos(attitude.x)*cos(attitude.y) * globalPoint.z;
+
+  localPoint.unit = globalPoint.unit;
+
+  return localPoint;
+}
+
+UnitConverter::UnitConverter()
+{
+  this->conversionTable[make_pair("g", "m/s²")] = GRAVITY;
+  this->conversionTable[make_pair("mg", "m/s²")] = 0.001 * GRAVITY;
+  this->conversionTable[make_pair("deg", "rad")] = PI / 180.0;
+  this->conversionTable[make_pair("cm", "m")] = 0.01;
+  this->conversionTable[make_pair("mm", "m")] = 0.001;
+}
+
+float UnitConverter::getFactor(string sourceUnit, string targetUnit)
+{
+  pair<string, string> conversion = make_pair(sourceUnit, targetUnit);
+  return this->conversionTable[conversion];
+}
+
+void UnitConverter::convert(TranslationPoint* point, string targetUnit)
+{
+  float factor = this->getFactor(point->unit, targetUnit);
+  float viceVersaFactor = this->getFactor(targetUnit, point->unit);
+
+  if (point->unit == targetUnit || (factor == 0 && viceVersaFactor == 0) )
+    return; // source and target unit same or conversion not possible / available
+
+  if (viceVersaFactor != 0)
+    *point *= 1/viceVersaFactor;
+  else
+    *point *= factor;
+
+  point->unit = targetUnit;
+
+  return;
+}
+
+TranslationPoint UnitConverter::convert(TranslationPoint point, string targetUnit)
+{
+  float factor = this->getFactor(point.unit, targetUnit);
+  float viceVersaFactor = this->getFactor(targetUnit, point.unit);
+
+  if (point.unit == targetUnit || (factor == 0 && viceVersaFactor == 0) )
+    return point; // source and target unit same or conversion not possible / available
+
+  if (viceVersaFactor != 0)
+    point *= 1/viceVersaFactor;
+  else
+    point *= factor;
+
+  point.unit = targetUnit;
+
+  return point;
+}
+
+void UnitConverter::convert(float* point, string sourceUnit, string targetUnit)
+{
+  float factor = this->getFactor(sourceUnit, targetUnit);
+  float viceVersaFactor = this->getFactor(targetUnit, sourceUnit);
+
+  if (sourceUnit == targetUnit || (factor == 0 && viceVersaFactor == 0) )
+    return; // source and target unit same or conversion not possible / available
+
+  if (viceVersaFactor != 0)
+    *point *= 1/viceVersaFactor;
+  else
+    *point *= factor;
+
+  return;
+}
+
+float UnitConverter::convert(float point, string sourceUnit, string targetUnit)
+{
+  float factor = this->getFactor(sourceUnit, targetUnit);
+  float viceVersaFactor = this->getFactor(targetUnit, sourceUnit);
+
+  if (sourceUnit == targetUnit || (factor == 0 && viceVersaFactor == 0) )
+    return point; // source and target unit same or conversion not possible / available
+
+  if (viceVersaFactor != 0)
+    point *= 1/viceVersaFactor;
+  else
+    point *= factor;
+
+  return point;
 }
