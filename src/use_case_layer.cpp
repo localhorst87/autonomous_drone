@@ -2,9 +2,10 @@
 
 using namespace std;
 
-UseCaseInteractor::UseCaseInteractor()
-// Dummy for testing runtime
+UseCaseInteractor::UseCaseInteractor(SendingBoundary* motionExecuter) :
+sendingBoundary(motionExecuter)
 {
+  // dummy for testing purposes
   this->imageBuffer = FifoBuffer<Image>{10};
   this->sensorDataBuffer = FifoBuffer<SensorDataPoint>{100};
 }

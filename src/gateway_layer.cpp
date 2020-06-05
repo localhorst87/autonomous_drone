@@ -154,6 +154,7 @@ VideoDecoder::VideoDecoder()
 {
   avcodec_register_all(); // Registers all the codecs, parsers and bitstream filters enabled at configuration time
   this->configureDecoder();
+  av_log_set_level(AV_LOG_QUIET);
 }
 
 VideoDecoder::~VideoDecoder()
@@ -1153,4 +1154,171 @@ void ControllerProxy::stopSensorStream()
 
   if (this->sensorController->isConnected() )
     this->sensorController->disconnect();
+}
+
+MotionExecuter::MotionExecuter(CommunicationInterface* cmdInterface) :
+commandInterface(cmdInterface)
+{ }
+
+void MotionExecuter::move(ClosedLoopTranslation& motion)
+// executes a defined translation. If
+{
+  this->executing = true;
+  Job translationJob = this->makeTranslationJob(motion.movement);
+
+  int iTry = 0;
+  while (iTry <= REPETITIONS_FAILED_JOBS)
+  {
+    iTry++;
+    this->execute(translationJob);
+    if (translationJob.sent && translationJob.response == POSITIVE_FEEDBACK_MSG)
+    {
+      motion.done = true;
+      break;
+    }
+  }
+  this->executing = false;
+}
+
+void MotionExecuter::move(ClosedLoopRotation& motion)
+// add a defined motion and perform the resulting jobs
+// returns true upon successful operation
+// note: movement is performed first, from the local COS of the drone
+// followed by the rotation
+{
+  this->executing = true;
+  Job rotationJob = this->makeRotationJob(motion.rotation);
+
+  int iTry = 0;
+  while (iTry <= REPETITIONS_FAILED_JOBS)
+  {
+    iTry++;
+    this->execute(rotationJob);
+    if (rotationJob.sent && rotationJob.response == POSITIVE_FEEDBACK_MSG)
+    {
+      motion.done = true;
+      break;
+    }
+  }
+  this->executing = false;
+}
+
+void MotionExecuter::move(OpenLoopMotion& motion)
+// add a continuous motion and perform the resulting job
+// returns true upon successful operation
+// warning: The continuous motion is executed until interrupted by another!
+{
+  this->executing = true;
+  Job continuousJob = this->makeContinuousJob(motion);
+
+  int iTry = 0;
+  while (iTry <= REPETITIONS_FAILED_JOBS)
+  {
+    iTry++;
+    this->execute(continuousJob);
+    if (continuousJob.sent && continuousJob.response == POSITIVE_FEEDBACK_MSG)
+    {
+      motion.done = true;
+      break;
+    }
+  }
+  this->executing = false;
+}
+
+bool MotionExecuter::isExecuting()
+{
+  return this->executing;
+}
+
+void MotionExecuter::execute(Job& job)
+{
+  const uint8_t* command = reinterpret_cast<const uint8_t*>(job.command.c_str() );
+  if (this->commandInterface->sendData(command) > 0)
+    job.sent = true;
+  else
+  {
+    job.sent = false;
+    return;
+  }
+
+  if (this->commandInterface->receiveData(BLOCKING_TIME_RECEIVE) > 0) // check if got response
+    job.response = (char*)this->commandInterface->getData(); // get response
+  else
+    job.response = ""; // must be set, as a failed job can be executed again!
+}
+
+Job MotionExecuter::makeRotationJob(RotationPoint rotation)
+{
+  this->unitConverter.convert(&rotation, TARGET_UNIT_ROTATION);
+
+  Job rotationJob;
+  rotationJob.command = this->createYawCommand(rotation);
+
+  return rotationJob;
+}
+
+Job MotionExecuter::makeTranslationJob(TranslationPoint movement)
+{
+  this->unitConverter.convert(movement, TARGET_UNIT_TRANSLATION);
+
+  Job movementJob;
+  movementJob.command = this->createMovementCommand(movement);
+
+  return movementJob;
+}
+
+Job MotionExecuter::makeContinuousJob(OpenLoopMotion motion)
+{
+  Job continuousJob;
+  continuousJob.command = this->createVelocityCommand(motion);
+
+  return continuousJob;
+}
+
+string MotionExecuter::createYawCommand(const RotationPoint& rotation) const
+{
+  int yaw = this->limitMagnitude(rotation.z, MIN_ROTATION_DEG, MAX_ROTATION_DEG);
+
+  if (yaw >= 0)
+    return "cw " + to_string(yaw);
+  else
+    return "ccw " + to_string(abs(yaw));
+}
+
+string MotionExecuter::createMovementCommand(const TranslationPoint& movement) const
+{
+  int x = 0, y = 0, z = 0;
+
+  if (movement.x > 0 )
+    x = this->limitMagnitude(movement.x, MIN_TRANSLATION_CM, MAX_TRANSLATION_CM);
+  if (movement.y > 0 )
+    y = this->limitMagnitude(movement.y, MIN_TRANSLATION_CM, MAX_TRANSLATION_CM);
+  if (movement.z > 0 )
+    z = this->limitMagnitude(movement.z, MIN_TRANSLATION_CM, MAX_TRANSLATION_CM);
+
+  return "go " + to_string(x) + " " + to_string(y) + " " + to_string(z) + " " + to_string(SPEED_CM_PER_S);
+}
+
+string MotionExecuter::createVelocityCommand(const OpenLoopMotion& velocity) const
+{
+  int x = this->limitValue(velocity.x, MIN_RELATIVE_SPEED, MAX_RELATIVE_SPEED);
+  int y = this->limitValue(velocity.y, MIN_RELATIVE_SPEED, MAX_RELATIVE_SPEED);
+  int z = this->limitValue(velocity.z, MIN_RELATIVE_SPEED, MAX_RELATIVE_SPEED);
+  int yaw = this->limitValue(velocity.yaw, MIN_RELATIVE_SPEED, MAX_RELATIVE_SPEED);
+
+  return "rc " + to_string(y) + " " + to_string(x) + " " + to_string(z) + " " + to_string(yaw);
+}
+
+int MotionExecuter::limitValue(int value, int lowerBorder, int upperBorder) const
+// adjusts value to the upper and lower limits
+{
+  return min(max (value, lowerBorder), upperBorder);
+}
+
+int MotionExecuter::limitMagnitude(int value, int absLowerBorder, int absUpperBorder) const
+// adjusts the magnitude of value to the magnitude of the given limits and keeps the sign
+// e.g. value = -5, absLowerBorder = 10 , absUpperBorder = 100 => returns -10
+{
+  int limitedMagnitude = this->limitValue(abs(value), abs(absLowerBorder), abs(absUpperBorder) );
+  return copysign(limitedMagnitude, value);
 }

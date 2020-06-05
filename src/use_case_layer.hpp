@@ -54,6 +54,16 @@ struct TranslationPoint
   TranslationPoint& operator*=(const float&);
 };
 
+bool operator==(const TranslationPoint&, const TranslationPoint&);
+bool operator==(const TranslationPoint&, const float&);
+bool operator==(const float&, const TranslationPoint&);
+bool operator!=(const TranslationPoint&, const TranslationPoint&);
+bool operator!=(const TranslationPoint&, const float&);
+bool operator!=(const float&, const TranslationPoint&);
+TranslationPoint operator+(const TranslationPoint&, const TranslationPoint&);
+TranslationPoint operator*(const TranslationPoint&, const float);
+TranslationPoint operator*(const float, const TranslationPoint&);
+
 typedef TranslationPoint RotationPoint;
 
 struct SensorDataPoint
@@ -68,6 +78,35 @@ struct SensorDataPoint
 
 ostream& operator<<(ostream&, const SensorDataPoint&);
 
+struct Job
+{
+  string command;
+  bool sent = false;
+  string response;
+};
+
+struct ClosedLoopTranslation
+{
+  TranslationPoint movement;
+  bool done = false;
+};
+
+struct ClosedLoopRotation
+{
+  RotationPoint rotation;
+  bool done = false;
+};
+
+struct OpenLoopMotion
+// all members are velocities given in relative percentages from -100 to +100
+{
+  int x;
+  int y;
+  int z;
+  int yaw;
+  bool done = false;
+};
+
 class ReceivingBoundary
 {
 public:
@@ -75,15 +114,25 @@ public:
   virtual void processSensorData(SensorDataPoint) = 0;
 };
 
+class SendingBoundary
+{
+public:
+  virtual void move(ClosedLoopTranslation&) = 0;
+  virtual void move(ClosedLoopRotation&) = 0;
+  virtual void move(OpenLoopMotion&) = 0;
+  virtual bool isExecuting() = 0;
+};
+
 class UseCaseInteractor : public ReceivingBoundary
 // Dummy for testing the runtime
 {
-public:
+private:
+  SendingBoundary* sendingBoundary;
   FifoBuffer<Image> imageBuffer;
   FifoBuffer<SensorDataPoint> sensorDataBuffer;
 
 public:
-  UseCaseInteractor();
+  UseCaseInteractor(SendingBoundary*);
   virtual void processImage(Image) final;
   virtual void processSensorData(SensorDataPoint) final;
 };

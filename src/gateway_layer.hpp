@@ -24,6 +24,7 @@ extern "C"
   #include <libavutil/avutil.h>
   #include <libswscale/swscale.h>
   #include <libavutil/imgutils.h>
+  #include <libavutil/log.h>
 }
 
 #include <stdio.h>
@@ -381,6 +382,44 @@ public:
   void stopVideoStream();
   void startSensorStream();
   void stopSensorStream();
+};
+
+class MotionExecuter : public SendingBoundary
+{
+private:
+  const int SPEED_CM_PER_S = 40;
+  const int MIN_ROTATION_DEG = 1;
+  const int MAX_ROTATION_DEG = 360;
+  const int MIN_TRANSLATION_CM = 20;
+  const int MAX_TRANSLATION_CM = 100; // may be raised up to 500 cm
+  const int MIN_RELATIVE_SPEED = -100;
+  const int MAX_RELATIVE_SPEED = 100;
+  const string TARGET_UNIT_ROTATION = "deg";
+  const string TARGET_UNIT_TRANSLATION = "cm";
+  const float BLOCKING_TIME_RECEIVE = 15.0;
+  const int REPETITIONS_FAILED_JOBS = 3;
+  CommunicationInterface* commandInterface;
+  UnitConverter unitConverter;
+  bool executing;
+
+private:
+  bool performPendingJobs();
+  void execute(Job&);
+  Job makeRotationJob(RotationPoint);
+  Job makeTranslationJob(TranslationPoint);
+  Job makeContinuousJob(OpenLoopMotion);
+  string createYawCommand(const RotationPoint&) const;
+  string createMovementCommand(const TranslationPoint&) const;
+  string createVelocityCommand(const OpenLoopMotion&) const;
+  int limitValue(int, int, int) const;
+  int limitMagnitude(int, int, int) const;
+
+public:
+  MotionExecuter(CommunicationInterface*);
+  virtual void move(ClosedLoopTranslation&) final;
+  virtual void move(ClosedLoopRotation&) final;
+  virtual void move(OpenLoopMotion&) final;
+  virtual bool isExecuting() final;
 };
 
 #endif
