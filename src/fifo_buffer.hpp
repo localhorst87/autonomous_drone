@@ -50,6 +50,8 @@ FifoBuffer<T>& FifoBuffer<T>::operator=(const FifoBuffer& rhs)
 {
   this->elements = rhs.elements;
   this->maxSize = rhs.maxSize;
+
+  return *this;
 }
 
 template<class T>
