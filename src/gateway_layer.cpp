@@ -761,7 +761,7 @@ void DisconnectedState::deactivateVideo()
 
 void DisconnectedState::getUserInfo()
 {
-  printf("CoulingState: Disconnected \n");
+  printf("CouplingState: Disconnected \n");
 }
 
 void IdleState::connect()
@@ -815,7 +815,7 @@ void IdleState::deactivateVideo()
 
 void IdleState::getUserInfo()
 {
-  printf("CoulingState: Idle \n");
+  printf("CouplingState: Idle \n");
 }
 
 void InteractiveState::connect()
@@ -869,7 +869,7 @@ void InteractiveState::deactivateVideo()
 
 void InteractiveState::getUserInfo()
 {
-  printf("CoulingState: Interactive \n");
+  printf("CouplingState: Interactive \n");
 }
 
 void InteractiveVisionState::connect()
@@ -923,7 +923,7 @@ void InteractiveVisionState::deactivateVideo()
 
 void InteractiveVisionState::getUserInfo()
 {
-  printf("CoulingState: Interactive Vision \n");
+  printf("CouplingState: Interactive Vision \n");
 }
 
 FlightState::~FlightState()
