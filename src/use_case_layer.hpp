@@ -128,8 +128,6 @@ class UseCaseInteractor : public ReceivingBoundary
 {
 private:
   SendingBoundary* sendingBoundary;
-  FifoBuffer<Image> imageBuffer;
-  FifoBuffer<SensorDataPoint> sensorDataBuffer;
 
 public:
   UseCaseInteractor(SendingBoundary*);

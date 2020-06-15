@@ -5,21 +5,17 @@ using namespace std;
 UseCaseInteractor::UseCaseInteractor(SendingBoundary* motionExecuter) :
 sendingBoundary(motionExecuter)
 {
-  // dummy for testing purposes
-  this->imageBuffer = FifoBuffer<Image>{10};
-  this->sensorDataBuffer = FifoBuffer<SensorDataPoint>{100};
+
 }
 
 void UseCaseInteractor::processImage(Image newImage)
-// Dummy for testing
 {
-  this->imageBuffer.push(newImage);
+
 }
 
 void UseCaseInteractor::processSensorData(SensorDataPoint newData)
-// Dummy for testing
 {
-  this->sensorDataBuffer.push(newData);
+
 }
 
 ostream& operator<<(ostream& os, const Image& img)
